@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>io.github.djytc</groupId>
+    <artifactId>etomcat</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- branding -->
+        <project.specification_vendor>https://github.com/djytc</project.specification_vendor>
+        <project.implementation_vendor>${project.specification_vendor}</project.implementation_vendor>
+        <!-- dependencies versions -->
+        <version.tomcat_core>8.5.14</version.tomcat_core>
+        <version.tomcat_logging>8.5.2</version.tomcat_logging>
+        <version.commons_lang>2.6</version.commons_lang>
+        <version.commons_io>2.5</version.commons_io>
+        <version.junit>4.12</version.junit>
+        <version.commons_httpclient>3.1</version.commons_httpclient>
+        <version.jssutils>1.0.7</version.jssutils>
+        <!-- plugins versions -->
+        <version.maven_compiler_plugin>3.1</version.maven_compiler_plugin>
+        <version.maven_jar_plugin>2.4</version.maven_jar_plugin>
+        <version.maven_source_plugin>3.0.1</version.maven_source_plugin>
+        <version.maven_clean_plugin>2.5</version.maven_clean_plugin>
+        <version.maven_shade_plugin>3.0.0</version.maven_shade_plugin>
+        <version.maven_source_plugin>3.0.1</version.maven_source_plugin>
+        <version.maven_javadoc_plugin>2.10.4</version.maven_javadoc_plugin>
+        <version.maven_release_plugin>2.3.2</version.maven_release_plugin>
+        <version.maven_scm_provider_gitexe>1.9.5</version.maven_scm_provider_gitexe>
+        <version.ctz_buildnumber_plugin>1.2.7</version.ctz_buildnumber_plugin>
+    </properties>
+
+    <dependencies>
+        <!-- tomcat -->
+        <dependency>
+            <groupId>org.apache.tomcat.embed</groupId>
+            <artifactId>tomcat-embed-core</artifactId>
+            <version>${version.tomcat_core}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tomcat.embed</groupId>
+            <artifactId>tomcat-embed-logging-log4j</artifactId>
+            <version>${version.tomcat_logging}</version>
+        </dependency>
+        <!-- test -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>commons-httpclient</groupId>
+            <artifactId>commons-httpclient</artifactId>
+            <version>${version.commons_httpclient}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jsslutils</groupId>
+            <artifactId>jsslutils-extra-apachehttpclient3</artifactId>
+            <version>${version.jssutils}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+    
+</project>
