@@ -1,5 +1,6 @@
 package io.github.djytc.etomcat;
 
+import io.github.djytc.etomcat.jaxb.webapp.WebAppType;
 import org.apache.catalina.*;
 import org.apache.catalina.connector.Connector;
 import org.apache.catalina.core.*;
@@ -13,6 +14,8 @@ import io.github.djytc.etomcat.failfast.FailFastConnector;
 import io.github.djytc.etomcat.valves.PostCharacterEncodingValve;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 
 import static java.io.File.separator;
 
@@ -36,14 +39,20 @@ public class EmbeddedTomcat {
     private SslProperties sslProps = new SslProperties();
     private ExecutorProperties executorProps = new ExecutorProperties();
 
-    public synchronized EmbeddedTomcat start(File baseDir) {
+    private final WebAppType webappConfig;
+
+    public EmbeddedTomcat(WebAppType webappConfig) {
+        this.webappConfig = webappConfig;
+    }
+
+    public synchronized EmbeddedTomcat start() {
         if (started) throw new RuntimeException("ETomcat is already started");
         try {
-            doStart(baseDir);
+            doStart();
             return this;
         } catch (LifecycleException e) {
             doStop();
-            throw new RuntimeException("Exception occured on starting ETomcat", e);
+            throw new RuntimeException("Exception occurred on starting ETomcat", e);
         }
     }
 
@@ -51,21 +60,18 @@ public class EmbeddedTomcat {
         if (started) doStop();
     }
 
-    private void doStart(File baseDir) throws LifecycleException {
+    private void doStart() throws LifecycleException {
         logger.info("Starting Embedded Tomcat...");
-        // resolving paths
-        Paths paths = new Paths(baseDir, fsProps.getConfDir(), fsProps.getWorkDir(), generalProps.getDocBaseDir(), fsProps.getWebXmlPath(), sslProps.getKeystoreFile(), sslProps.getTruststoreFile(), sslProps.getCrlFile());
-        logger.debug("Etomcat paths resolved: " + paths);
         // creating
-        embedded = createServer(paths);
+        embedded = createServer();
         StandardService service = createService();
         embedded.addService(service);
         Executor executor = createExecutor();
         service.addExecutor(executor);
         StandardEngine engine = createEngine(service);
-        Host host = createHost(paths);
-        StandardContext context = createContext(paths);
-        Connector connector = createConnector(paths);
+        Host host = createHost();
+        StandardContext context = createContext();
+        Connector connector = createConnector();
         // tomcat binding
         service.setContainer(engine);
         engine.setDefaultHost(host.getName());
@@ -101,11 +107,11 @@ public class EmbeddedTomcat {
         return service;
     }
 
-    private StandardServer createServer(Paths paths) {
+    private StandardServer createServer() {
         StandardServer server = new StandardServer();
-        File bd = new File(paths.getBaseDir());
-        server.setCatalinaBase(bd);
-        server.setCatalinaHome(bd);
+        // todo
+//        server.setCatalinaBase(bd);
+//        server.setCatalinaHome(bd);
         server.setPort(-1);
         return server;
     }
@@ -117,7 +123,7 @@ public class EmbeddedTomcat {
         return engine;
     }
 
-    private StandardHost createHost(Paths paths) {
+    private StandardHost createHost() {
         StandardHost host = new StandardHost();
         host.setAutoDeploy(false);
         host.setDeployOnStartup(false);
@@ -127,13 +133,18 @@ public class EmbeddedTomcat {
         host.setAppBase("NOT_SUPPORTED_SETTING");
         host.setName(hostProps.getName());
         host.setErrorReportValveClass(hostProps.getErrorReportValveClass());
-        host.setWorkDir(paths.getWorkDir());
+        //todo: delete
+        try {
+            host.setWorkDir(Files.createTempDirectory("etomcat").toString());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         return host;
     }
 
-    private StandardContext createContext(Paths paths) {
+    private StandardContext createContext() {
         StandardContext context = new StandardContext();
-        context.setAltDDName(paths.getWebXmlFile());
+//        context.setAltDDName(paths.getWebXmlFile());
         context.setCrossContext(true);
         context.setPrivileged(true);
         context.setClearReferencesHttpClientKeepAliveThread(false);
@@ -151,7 +162,8 @@ public class EmbeddedTomcat {
 
         context.setPath(generalProps.getContextPath());
         context.setCookies(contextProps.isCookies());
-        context.setDocBase(paths.getDocBaseDir());
+        // todo
+//        context.setDocBase(paths.getDocBaseDir());
         context.setUnloadDelay(contextProps.getUnloadDelayMs());
         context.setSessionTimeout(contextProps.getSessionTimeoutMinutes());
 
@@ -175,7 +187,7 @@ public class EmbeddedTomcat {
         context.getResources().setCachingAllowed(contextProps.isCachingAllowed());
 
         context.setManager(createManager());
-        context.addLifecycleListener(new EmbeddedContextConfig(context, paths.getWebXmlFile()));
+        context.addLifecycleListener(new EmbeddedContextConfig(context, webappConfig));
         return context;
     }
 
@@ -185,7 +197,7 @@ public class EmbeddedTomcat {
         return manager;
     }
 
-    private Connector createConnector(Paths paths) {
+    private Connector createConnector() {
         Connector con = null;
         try {
             if(connectorProps.isUseFailFastResponseWriter()) {
@@ -249,7 +261,7 @@ public class EmbeddedTomcat {
             proto.setSSLEnabled(true);
             con.setScheme("https");
             con.setSecure(true);
-            proto.setKeystoreFile(paths.getKeystoreFile());
+            proto.setKeystoreFile(sslProps.getKeystoreFile());
             proto.setKeystorePass(sslProps.getKeystorePass());
             proto.setKeystoreType(sslProps.getKeystoreType());
             proto.setProperty("keystoreProvider", sslProps.getKeystoreProvider());
@@ -257,7 +269,7 @@ public class EmbeddedTomcat {
             proto.setAlgorithm(sslProps.getAlgorithm());
             if(sslProps.isClientAuth()) {
                 proto.setClientAuth("true");
-                proto.setTruststoreFile(paths.getTruststoreFile());
+                proto.setTruststoreFile(sslProps.getTruststoreFile());
                 proto.setTruststorePass(sslProps.getTruststorePass());
                 proto.setTruststoreType(sslProps.getTruststoreType());
                 con.setProperty("truststoreProvider", sslProps.getTruststoreProvider());
@@ -266,7 +278,7 @@ public class EmbeddedTomcat {
             proto.setCiphers(sslProps.getCiphers());
             con.setProperty("sessionCacheSize", Integer.toString(sslProps.getSessionCacheSize()));
             con.setProperty("sessionTimeout", Integer.toString(sslProps.getSessionTimeoutSecs()));
-            if(!sslProps.getCrlFile().isEmpty()) con.setProperty("crlFile", paths.getCrlFile());
+            if(!sslProps.getCrlFile().isEmpty()) con.setProperty("crlFile", sslProps.getCrlFile());
         }
 
         return con;
@@ -297,75 +309,75 @@ public class EmbeddedTomcat {
                 executorImpl.getQueueSize());
     }
 
-    class Paths {
-        private final String baseDir;
-        private final String confDir;
-        private final String workDir;
-        private final String docBaseDir;
-        private final String webXmlFile;
-        private final String keystoreFile;
-        private final String truststoreFile;
-        private final String crlFile;
-
-        private Paths(File baseDir, String confDir, String workDir, String docBaseDir, String webXmlFile, String keystoreFile, String truststoreFile, String crlFile) {
-            this.baseDir = baseDir.getAbsolutePath();
-            this.confDir = this.baseDir + separator + confDir;
-            this.workDir = this.baseDir + separator + workDir;
-            this.docBaseDir = this.baseDir + separator + docBaseDir;
-            this.webXmlFile = this.confDir + separator + webXmlFile;
-            this.keystoreFile = this.confDir + separator + keystoreFile;
-            this.truststoreFile = this.confDir + separator + truststoreFile;
-            this.crlFile = this.confDir + separator + crlFile;
-        }
-
-        public String getBaseDir() {
-            return baseDir;
-        }
-
-        public String getConfDir() {
-            return confDir;
-        }
-
-        public String getWorkDir() {
-            return workDir;
-        }
-
-        public String getDocBaseDir() {
-            return docBaseDir;
-        }
-
-        public String getWebXmlFile() {
-            return webXmlFile;
-        }
-
-        public String getKeystoreFile() {
-            return keystoreFile;
-        }
-
-        public String getTruststoreFile() {
-            return truststoreFile;
-        }
-
-        public String getCrlFile() {
-            return crlFile;
-        }
-
-        @Override
-        public String toString() {
-            final StringBuilder sb = new StringBuilder();
-            sb.append("Paths");
-            sb.append("{baseDir='").append(baseDir).append('\'');
-            sb.append(", confDir='").append(confDir).append('\'');
-            sb.append(", workDir='").append(workDir).append('\'');
-            sb.append(", docBaseDir='").append(docBaseDir).append('\'');
-            sb.append(", webXmlFile='").append(webXmlFile).append('\'');
-            sb.append(", keystoreFile='").append(keystoreFile).append('\'');
-            sb.append(", truststoreFile='").append(truststoreFile).append('\'');
-            sb.append(", crlFile='").append(crlFile).append('\'');
-            sb.append('}');
-            return sb.toString();
-        }
-    }
+//    class Paths {
+//        private final String baseDir;
+//        private final String confDir;
+//        private final String workDir;
+//        private final String docBaseDir;
+//        private final String webXmlFile;
+//        private final String keystoreFile;
+//        private final String truststoreFile;
+//        private final String crlFile;
+//
+//        private Paths(File baseDir, String confDir, String workDir, String docBaseDir, String webXmlFile, String keystoreFile, String truststoreFile, String crlFile) {
+//            this.baseDir = baseDir.getAbsolutePath();
+//            this.confDir = this.baseDir + separator + confDir;
+//            this.workDir = this.baseDir + separator + workDir;
+//            this.docBaseDir = this.baseDir + separator + docBaseDir;
+//            this.webXmlFile = this.confDir + separator + webXmlFile;
+//            this.keystoreFile = this.confDir + separator + keystoreFile;
+//            this.truststoreFile = this.confDir + separator + truststoreFile;
+//            this.crlFile = this.confDir + separator + crlFile;
+//        }
+//
+//        public String getBaseDir() {
+//            return baseDir;
+//        }
+//
+//        public String getConfDir() {
+//            return confDir;
+//        }
+//
+//        public String getWorkDir() {
+//            return workDir;
+//        }
+//
+//        public String getDocBaseDir() {
+//            return docBaseDir;
+//        }
+//
+//        public String getWebXmlFile() {
+//            return webXmlFile;
+//        }
+//
+//        public String getKeystoreFile() {
+//            return keystoreFile;
+//        }
+//
+//        public String getTruststoreFile() {
+//            return truststoreFile;
+//        }
+//
+//        public String getCrlFile() {
+//            return crlFile;
+//        }
+//
+//        @Override
+//        public String toString() {
+//            final StringBuilder sb = new StringBuilder();
+//            sb.append("Paths");
+//            sb.append("{baseDir='").append(baseDir).append('\'');
+//            sb.append(", confDir='").append(confDir).append('\'');
+//            sb.append(", workDir='").append(workDir).append('\'');
+//            sb.append(", docBaseDir='").append(docBaseDir).append('\'');
+//            sb.append(", webXmlFile='").append(webXmlFile).append('\'');
+//            sb.append(", keystoreFile='").append(keystoreFile).append('\'');
+//            sb.append(", truststoreFile='").append(truststoreFile).append('\'');
+//            sb.append(", crlFile='").append(crlFile).append('\'');
+//            sb.append('}');
+//            return sb.toString();
+//        }
+//    }
 
     public EmbeddedTomcat setGeneralProps(GeneralProperties generalProps) {
         this.generalProps = generalProps;

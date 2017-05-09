@@ -1,5 +1,7 @@
 package io.github.djytc.etomcat;
 
+import io.github.djytc.etomcat.jaxb.webapp.ObjectFactory;
+import io.github.djytc.etomcat.jaxb.webapp.WebAppType;
 import org.apache.catalina.*;
 import org.apache.catalina.core.StandardContext;
 import org.apache.tomcat.util.descriptor.web.*;
@@ -7,9 +9,16 @@ import org.xml.sax.InputSource;
 
 import javax.servlet.MultipartConfigElement;
 import javax.servlet.SessionCookieConfig;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBElement;
+import javax.xml.bind.Marshaller;
+import javax.xml.namespace.QName;
 import java.io.*;
+import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.Set;
+
+import static javax.xml.bind.Marshaller.JAXB_FORMATTED_OUTPUT;
 
 /**
  * User: alexey
@@ -18,11 +27,11 @@ import java.util.Set;
 class EmbeddedContextConfig implements LifecycleListener {
 
     private final StandardContext context;
-    private final String webXmlFile;
+    private final WebAppType webappConfig;
 
-    EmbeddedContextConfig(StandardContext context, String webXmlFile) {
+    EmbeddedContextConfig(StandardContext context, WebAppType webappConfig) {
         this.context = context;
-        this.webXmlFile = webXmlFile;
+        this.webappConfig = webappConfig;
     }
 
     @Override
@@ -38,6 +47,23 @@ class EmbeddedContextConfig implements LifecycleListener {
         }
     }
 
+    // todo: cleanup
+    private String marshal() {
+        try {
+            JAXBContext jaxb = JAXBContext.newInstance(WebAppType.class.getPackage().getName());
+            StringWriter writer = new StringWriter();
+            Marshaller marshaller = jaxb.createMarshaller();
+            marshaller.setProperty(JAXB_FORMATTED_OUTPUT, true);
+            ObjectFactory of = new ObjectFactory();
+            marshaller.marshal(of.createWebApp(webappConfig), writer);
+            String res = writer.toString();
+            System.out.println(res);
+            return res;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private void configureStart() {
         try {
             webConfig();
@@ -48,22 +74,15 @@ class EmbeddedContextConfig implements LifecycleListener {
     }
 
     protected void webConfig() throws IOException {
-        InputStream is = null;
-        try {
-            WebXmlParser webXmlParser = new WebXmlParser(context.getXmlNamespaceAware(),
-                    context.getXmlValidation(), context.getXmlBlockExternal());
-            is = new FileInputStream(new File(webXmlFile));
-            InputSource source = new InputSource(new InputStreamReader(is));
-            WebXml webXml = new WebXml();
-            boolean success = webXmlParser.parseWebXml(source, webXml, false);
-            if (!success) throw new IOException("Start error");
-            configureContext(webXml);
-        } finally {
-            try {
-                if (null != is) is.close();
-            } catch (IOException e) {
-            }
+        WebXmlParser webXmlParser = new WebXmlParser(context.getXmlNamespaceAware(),
+                context.getXmlValidation(), context.getXmlBlockExternal());
+        InputSource source = new InputSource(new StringReader(marshal()));
+        WebXml webXml = new WebXml();
+        boolean success = webXmlParser.parseWebXml(source, webXml, false);
+        if (!success) {
+            throw new IOException("Start error");
         }
+        configureContext(webXml);
     }
 
     private void configureContext(WebXml webxml) {

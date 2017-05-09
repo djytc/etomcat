@@ -1,3 +1,4 @@
+import io.github.djytc.etomcat.jaxb.webapp.*;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.httpclient.cookie.CookiePolicy;
@@ -12,9 +13,13 @@ import io.github.djytc.etomcat.config.GeneralProperties;
 import io.github.djytc.etomcat.config.SslProperties;
 
 import javax.net.ssl.*;
+import javax.xml.bind.JAXBElement;
+import javax.xml.namespace.QName;
 import java.io.File;
+import java.lang.String;
 import java.net.URI;
 import java.security.*;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
@@ -26,10 +31,10 @@ public class ETomcatTest {
 
     @Test
     public void test() throws Exception {
-        EmbeddedTomcat tc = new EmbeddedTomcat();
+        EmbeddedTomcat tc = new EmbeddedTomcat(createConfig());
         setupServerSsl(tc);
         Runtime.getRuntime().addShutdownHook(new Thread(tc.shutdownHook()));
-        tc.start(new File("src/test/resources/appdir"));
+        tc.start();
         HttpClient client = new HttpClient();
         // test get
         setupClientSsl();
@@ -37,20 +42,61 @@ public class ETomcatTest {
         get.getParams().setCookiePolicy(CookiePolicy.RFC_2965);
         client.executeMethod(get);
         byte[] responseBody = get.getResponseBody();
-        String content = new String(responseBody, "UTF-8");
+        java.lang.String content = new java.lang.String(responseBody, "UTF-8");
         assertEquals(TestServlet.class.getSimpleName(), content);
         System.out.println(content);
         System.out.println(tc.getInnerExecutorState());
     }
 
+    private static WebAppType createConfig() {
+        ObjectFactory of = new ObjectFactory();
+        return new WebAppType()
+                .withVersion("3.1")
+                .withId("test")
+                .withModuleNameOrDescriptionAndDisplayName(
+                        of.createWebAppTypeServlet(new ServletType()
+                                .withServletName(
+                                        new ServletNameType()
+                                                .withValue("testServlet"))
+                                .withServletClass(
+                                        new FullyQualifiedClassType()
+                                                .withValue("test.TestServlet"))),
+                        of.createWebAppTypeServletMapping(new ServletMappingType()
+                                .withServletName(
+                                        new ServletNameType()
+                                                .withValue("testServlet"))
+                                .withUrlPattern(
+                                        new UrlPatternType()
+                                                .withValue("/etomcat_test"))),
+                        of.createWebAppTypeListener(new ListenerType()
+                                .withListenerClass(
+                                        new FullyQualifiedClassType()
+                                                .withValue("test.TestListener"))),
+                        of.createWebAppTypeFilter(new FilterType()
+                                .withFilterName(
+                                        new FilterNameType()
+                                                .withValue("testFilter"))
+                                .withFilterClass(
+                                        new FullyQualifiedClassType()
+                                                .withValue("test.TestFilter"))),
+                        of.createWebAppTypeFilterMapping(new FilterMappingType()
+                                .withFilterName(
+                                        new FilterNameType()
+                                                .withValue("testFilter"))
+                                .withUrlPatternOrServletName(
+                                        new UrlPatternType()
+                                                .withValue("/etomcat_test")))
+                );
+    }
+
     private static void setupServerSsl(EmbeddedTomcat tc) {
-//        File keystore = new File(codeSourceDir(ETomcatTest.class), "../../src/test/resources/etomcat.p12");
+        File keystore = new File(codeSourceDir(ETomcatTest.class), "../../src/test/resources/etomcat.p12");
         tc.setSslProps(new SslProperties()
                 .setSslEnabled(true)
-                .setKeystoreFile("../../etomcat.p12")
+                .setKeystoreFile(keystore.getAbsolutePath())
                 .setKeystorePass("storepass")
                 .setKeyAlias("etomcat_test"))
-        .setGeneralProps(new GeneralProperties().setPort(8443));
+                .setGeneralProps(new GeneralProperties().setPort(8443));
     }
 
     private static void setupClientSsl() throws Exception {
@@ -61,7 +107,7 @@ public class ETomcatTest {
         fac.init(trustStore);
         TrustManager[] tms = fac.getTrustManagers();
         SSLContext ctx = SSLContext.getInstance("TLS", "SunJSSE");
-        ctx.init(new KeyManager[] {}, tms, new SecureRandom());
+        ctx.init(new KeyManager[]{}, tms, new SecureRandom());
         SslContextedSecureProtocolSocketFactory secureProtocolSocketFactory = new SslContextedSecureProtocolSocketFactory(ctx);
         Protocol.registerProtocol("https", new Protocol("https", (ProtocolSocketFactory) secureProtocolSocketFactory, 8443));
     }
