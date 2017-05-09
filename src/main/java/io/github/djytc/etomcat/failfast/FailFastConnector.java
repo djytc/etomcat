@@ -11,7 +11,7 @@ public class FailFastConnector extends Connector {
     public FailFastConnector() throws Exception {
     }
 
-    public FailFastConnector(String protocol) throws Exception {
+    public FailFastConnector(String protocol) {
         super(protocol);
     }
 

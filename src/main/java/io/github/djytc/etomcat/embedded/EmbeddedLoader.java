@@ -1,4 +1,4 @@
-package io.github.djytc.etomcat;
+package io.github.djytc.etomcat.embedded;
 
 import org.apache.catalina.Container;
 import org.apache.catalina.Context;
@@ -11,7 +11,7 @@ import java.beans.PropertyChangeListener;
  * User: alexey
  * Date: 8/27/11
  */
-class EmbeddedLoader implements Loader {
+public class EmbeddedLoader implements Loader {
 
     private Context context;
 

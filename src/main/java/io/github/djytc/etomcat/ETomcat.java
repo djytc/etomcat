@@ -1,10 +1,15 @@
 package io.github.djytc.etomcat;
 
+import io.github.djytc.etomcat.common.DeleteRecursiveVisitor;
+import io.github.djytc.etomcat.common.ExecutorState;
+import io.github.djytc.etomcat.common.WebAppMarshaller;
+import io.github.djytc.etomcat.embedded.*;
 import io.github.djytc.etomcat.jaxb.config.*;
 import io.github.djytc.etomcat.jaxb.webapp.WebAppType;
 import org.apache.catalina.*;
 import org.apache.catalina.connector.Connector;
 import org.apache.catalina.core.*;
+import org.apache.catalina.webresources.StandardRoot;
 import org.apache.coyote.http11.Http11NioProtocol;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
@@ -13,47 +18,56 @@ import io.github.djytc.etomcat.failfast.FailFastConnector;
 import io.github.djytc.etomcat.valves.PostCharacterEncodingValve;
 
 import java.io.IOException;
-import java.nio.file.Files;
+import java.nio.file.*;
 
 /**
  * User: alexkasko
  * Date: 12/3/14
  */
-public class EmbeddedTomcat {
-    private final Log logger = LogFactory.getLog(EmbeddedTomcat.class);
+public class ETomcat {
+    public static final Log logger = LogFactory.getLog(ETomcat.class);
 
-    private final ETomcatConfigType cf;
-    private final WebAppType webapp;
-    
+    private final TomcatConfigType cf;
+    private final String webapp;
+
+    private String createdWorkDir = "";
     private boolean started = false;
-    private Server embedded;
+    private Server server;
 
-    public EmbeddedTomcat(ETomcatConfigType cf, WebAppType webapp) {
+    private final Object startStopLock = new Object();
+
+    public ETomcat(TomcatConfigType cf, WebAppType webapp) {
         this.cf = cf;
-        this.webapp = webapp;
+        this.webapp = WebAppMarshaller.marshal(webapp);
     }
 
-    public synchronized EmbeddedTomcat start() {
-        if (started) throw new RuntimeException("ETomcat is already started");
-        try {
-            doStart();
-            return this;
-        } catch (LifecycleException e) {
-            doStop();
-            throw new RuntimeException("Exception occurred on starting ETomcat", e);
+    public ETomcat start() throws ETomcatException {
+        synchronized (startStopLock) {
+            if (started) throw new ETomcatException("ETomcat is already started");
+            try {
+                doStart();
+                return this;
+            } catch (LifecycleException e) {
+                doStop();
+                throw new ETomcatException("Error starting ETomcat", e);
+            }
         }
     }
 
-    public synchronized void stop() {
-        if (started) doStop();
+    public void stop() {
+        synchronized (startStopLock) {
+            if (started) {
+                doStop();
+            }
+        }
     }
 
     private void doStart() throws LifecycleException {
-        logger.info("Starting Embedded Tomcat...");
+        logger.info("Starting ETomcat...");
         // creating
-        embedded = createServer();
+        server = createServer();
         StandardService service = createService();
-        embedded.addService(service);
+        server.addService(service);
         Executor executor = createExecutor();
         service.addExecutor(executor);
         StandardEngine engine = createEngine(service);
@@ -68,25 +82,23 @@ public class EmbeddedTomcat {
         Http11NioProtocol proto = (Http11NioProtocol) connector.getProtocolHandler();
         proto.setExecutor(executor);
         service.addConnector(connector);
-        // bind context for inheritors
-        bindContext(context);
         // starting
-        embedded.start();
+        server.start();
+        if (cf.getGeneralConfig().isRegisterShutdownHook()) {
+            Runtime.getRuntime().addShutdownHook(new Thread(new ShutdownHook()));
+        }
         started = true;
-        logger.info("Embedded Tomcat started successfully");
-    }
-
-    protected void bindContext(StandardContext context) {
+        logger.info("ETomcat started successfully");
     }
 
     private void doStop() {
-        logger.info("Stopping Embedded Tomcat...");
+        logger.info("Stopping ETomcat...");
         try {
-            embedded.stop();
+            server.stop();
         } catch (Exception e) {
-            logger.warn("Exception occured on stopping etomcat", e);
+            logger.warn("Error stopping ETomcat", e);
         }
-        logger.info("Embedded Tomcat stopped");
+        logger.info("ETomcat stopped");
     }
 
     private StandardService createService() {
@@ -97,9 +109,8 @@ public class EmbeddedTomcat {
 
     private StandardServer createServer() {
         StandardServer server = new StandardServer();
-        // todo
-//        server.setCatalinaBase(bd);
-//        server.setCatalinaHome(bd);
+        server.setCatalinaBase(null);
+        server.setCatalinaHome(null);
         server.setPort(-1);
         return server;
     }
@@ -121,12 +132,19 @@ public class EmbeddedTomcat {
         host.setAppBase("NOT_SUPPORTED_SETTING");
         host.setName(cf.getGeneralConfig().getHostname());
         host.setErrorReportValveClass("org.apache.catalina.valves.ErrorReportValve");
-        //todo: delete
-        try {
-            host.setWorkDir(Files.createTempDirectory("etomcat").toString());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        final String wd;
+        if (cf.getGeneralConfig().getWorkDir().isEmpty()) {
+            try {
+                Path path = Files.createTempDirectory("etomcat").toAbsolutePath();
+                wd = path.toString();
+                createdWorkDir = wd;
+            } catch (IOException e) {
+                throw new ETomcatException("Cannot create temporary 'workDir'", e);
+            }
+        } else {
+            wd = cf.getGeneralConfig().getWorkDir();
         }
+        host.setWorkDir(wd);
         return host;
     }
 
@@ -151,8 +169,9 @@ public class EmbeddedTomcat {
 
         context.setPath(cf.getGeneralConfig().getContextPath());        
         context.setCookies(contextConf.isCookies());
-        // todo
-//        context.setDocBase(paths.getDocBaseDir());
+        if (!cf.getGeneralConfig().getDocBaseDir().isEmpty()) {
+            context.setDocBase(cf.getGeneralConfig().getDocBaseDir());
+        }
         context.setUnloadDelay(contextConf.getUnloadDelayMs());
         context.setSessionTimeout(contextConf.getSessionTimeoutMinutes());
 
@@ -163,14 +182,13 @@ public class EmbeddedTomcat {
         }
 
         context.setLoader(new EmbeddedLoader());
-//        todo
-//        if(cf.getGeneralConfig().isUseFsResources()) {
-//            logger.debug("Using FileDirContext");
-//            context.setResources(new StandardRoot(context));
-//        } else {
+        if(!cf.getGeneralConfig().getDocBaseDir().isEmpty()) {
+            logger.debug("Using FileDirContext");
+            context.setResources(new StandardRoot(context));
+        } else {
             logger.debug("Using EmbeddedDirContext");
             context.setResources(new EmbeddedResourceRoot(context));
-//        }
+        }
         context.getResources().setCacheMaxSize(contextConf.getCacheMaxSizeKb());
         context.getResources().setCacheObjectMaxSize(contextConf.getCacheObjectMaxSizeKb());
         context.getResources().setCacheTtl(contextConf.getCacheTtlSec());
@@ -193,14 +211,10 @@ public class EmbeddedTomcat {
         SocketConfigType socketConf = cf.getSocketConfig();
         SslConfigType sslConf = cf.getSslConfig();
         Connector con = null;
-        try {
-            if(connectorConf.isUseFailFastResponseWriter()) {
-                con = new FailFastConnector("org.apache.coyote.http11.Http11NioProtocol");
-            } else {
-                con = new Connector("org.apache.coyote.http11.Http11NioProtocol");
-            }
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
+        if (connectorConf.isUseFailFastResponseWriter()) {
+            con = new FailFastConnector("org.apache.coyote.http11.Http11NioProtocol");
+        } else {
+            con = new Connector("org.apache.coyote.http11.Http11NioProtocol");
         }
         Http11NioProtocol proto = (Http11NioProtocol) con.getProtocolHandler();
         con.setEnableLookups(connectorConf.isEnableLookups());
@@ -291,27 +305,27 @@ public class EmbeddedTomcat {
 		return executor;
     }
 
-    public ExecutorState getInnerExecutorState() {
-        StandardThreadExecutor executorImpl = (StandardThreadExecutor) embedded.findServices()[0].findExecutors()[0];
-        return new ExecutorState(executorImpl.getMaxIdleTime(),
-                executorImpl.getMaxThreads(),
-                executorImpl.getMinSpareThreads(),
-                executorImpl.getActiveCount(),
-                executorImpl.getCompletedTaskCount(),
-                executorImpl.getCorePoolSize(),
-                executorImpl.getLargestPoolSize(),
-                executorImpl.getPoolSize(),
-                executorImpl.getQueueSize());
+    public ExecutorState getInternalExecutorState() {
+        StandardThreadExecutor ex = (StandardThreadExecutor) server.findServices()[0].findExecutors()[0];
+        return new ExecutorState(ex);
     }
 
-    public Runnable shutdownHook() {
-        return new ShutdownHook();
+    private void deleteRecursive(String dir) {
+        try {
+            if (dir.isEmpty()) {
+                return;
+            }
+            Files.walkFileTree(Paths.get(dir), new DeleteRecursiveVisitor());
+        } catch (IOException e) {
+            logger.warn("'workDir' cleanup error", e);
+        }
     }
 
     private class ShutdownHook implements Runnable {
         @Override
         public void run() {
             stop();
+            deleteRecursive(createdWorkDir);
         }
     }
 }

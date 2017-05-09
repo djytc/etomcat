@@ -1,4 +1,4 @@
-package io.github.djytc.etomcat;
+package io.github.djytc.etomcat.embedded;
 
 import org.apache.catalina.*;
 import org.apache.catalina.security.SecurityUtil;
@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * User: alexey
  * Date: 8/27/11
  */
-class EmbeddedManager extends ManagerBase {
+public class EmbeddedManager extends ManagerBase {
 
     /**
      * @inheritDoc

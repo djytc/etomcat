@@ -2,7 +2,7 @@
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            xmlns="https://djytc.github.io/config"
            targetNamespace="https://djytc.github.io/config">
-    <xs:element name="ETomcatConfig" type="ETomcatConfigType"/>
+    <xs:element name="TomcatConfig" type="TomcatConfigType"/>
 
     <xs:complexType name="ConnectorConfigType">
         <xs:sequence>
@@ -55,7 +55,9 @@
             <xs:element name="hostname" type="xs:string" default="localhost" />
             <xs:element name="tcpPort" type="xs:int" default="8080" />
             <xs:element name="docBaseDir" type="xs:string" default="" />
+            <xs:element name="workDir" type="xs:string" default="" />
             <xs:element name="contextPath" type="xs:string" default="" />
+            <xs:element name="registerShutdownHook" type="xs:boolean" default="true" />
         </xs:sequence>
     </xs:complexType>
 
@@ -121,7 +123,7 @@
         </xs:sequence>
     </xs:complexType>
 
-    <xs:complexType name="ETomcatConfigType">
+    <xs:complexType name="TomcatConfigType">
         <xs:sequence>
             <xs:element name="connectorConfig" type="ConnectorConfigType" nillable="false"/>
             <xs:element name="contextConfig" type="ContextConfigType"/>

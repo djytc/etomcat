@@ -1,3 +1,4 @@
+import io.github.djytc.etomcat.ETomcat;
 import io.github.djytc.etomcat.jaxb.config.*;
 import io.github.djytc.etomcat.jaxb.webapp.*;
 import io.github.djytc.etomcat.jaxb.webapp.ObjectFactory;
@@ -9,7 +10,6 @@ import org.apache.commons.httpclient.protocol.Protocol;
 import org.apache.commons.httpclient.protocol.ProtocolSocketFactory;
 import org.jsslutils.extra.apachehttpclient.SslContextedSecureProtocolSocketFactory;
 import org.junit.Test;
-import io.github.djytc.etomcat.EmbeddedTomcat;
 import test.TestServlet;
 
 import javax.net.ssl.*;
@@ -28,8 +28,7 @@ public class ETomcatTest {
 
     @Test
     public void test() throws Exception {
-        EmbeddedTomcat tc = new EmbeddedTomcat(createTomcatConfig(), createWebApp());
-        Runtime.getRuntime().addShutdownHook(new Thread(tc.shutdownHook()));
+        ETomcat tc = new ETomcat(createTomcatConfig(), createWebApp());
         tc.start();
         HttpClient client = new HttpClient();
         // test get
@@ -41,7 +40,7 @@ public class ETomcatTest {
         java.lang.String content = new java.lang.String(responseBody, "UTF-8");
         assertEquals(TestServlet.class.getSimpleName(), content);
         System.out.println(content);
-        System.out.println(tc.getInnerExecutorState());
+        System.out.println(tc.getInternalExecutorState());
     }
 
     private static WebAppType createWebApp() {
@@ -85,8 +84,8 @@ public class ETomcatTest {
                 );
     }
 
-    private static ETomcatConfigType createTomcatConfig() {
-        return new ETomcatConfigType(new ConnectorConfigType(), new ContextConfigType(), new ExecutorConfigType(),
+    private static TomcatConfigType createTomcatConfig() {
+        return new TomcatConfigType(new ConnectorConfigType(), new ContextConfigType(), new ExecutorConfigType(),
                 new GeneralConfigType(), new NioConfigType(), new SocketConfigType(), new SslConfigType())
                 .withGeneralConfig(new GeneralConfigType()
                         .withTcpPort(8443))

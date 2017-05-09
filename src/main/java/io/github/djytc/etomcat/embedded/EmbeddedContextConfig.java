@@ -1,4 +1,4 @@
-package io.github.djytc.etomcat;
+package io.github.djytc.etomcat.embedded;
 
 import io.github.djytc.etomcat.jaxb.webapp.ObjectFactory;
 import io.github.djytc.etomcat.jaxb.webapp.WebAppType;
@@ -24,12 +24,12 @@ import static javax.xml.bind.Marshaller.JAXB_FORMATTED_OUTPUT;
  * User: alexey
  * Date: 8/28/11
  */
-class EmbeddedContextConfig implements LifecycleListener {
+public class EmbeddedContextConfig implements LifecycleListener {
 
     private final StandardContext context;
-    private final WebAppType webappConfig;
+    private final String webappConfig;
 
-    EmbeddedContextConfig(StandardContext context, WebAppType webappConfig) {
+    public EmbeddedContextConfig(StandardContext context, String webappConfig) {
         this.context = context;
         this.webappConfig = webappConfig;
     }
@@ -47,23 +47,6 @@ class EmbeddedContextConfig implements LifecycleListener {
         }
     }
 
-    // todo: cleanup
-    private String marshal() {
-        try {
-            JAXBContext jaxb = JAXBContext.newInstance(WebAppType.class.getPackage().getName());
-            StringWriter writer = new StringWriter();
-            Marshaller marshaller = jaxb.createMarshaller();
-            marshaller.setProperty(JAXB_FORMATTED_OUTPUT, true);
-            ObjectFactory of = new ObjectFactory();
-            marshaller.marshal(of.createWebApp(webappConfig), writer);
-            String res = writer.toString();
-            System.out.println(res);
-            return res;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     private void configureStart() {
         try {
             webConfig();
@@ -76,7 +59,7 @@ class EmbeddedContextConfig implements LifecycleListener {
     protected void webConfig() throws IOException {
         WebXmlParser webXmlParser = new WebXmlParser(context.getXmlNamespaceAware(),
                 context.getXmlValidation(), context.getXmlBlockExternal());
-        InputSource source = new InputSource(new StringReader(marshal()));
+        InputSource source = new InputSource(new StringReader(webappConfig));
         WebXml webXml = new WebXml();
         boolean success = webXmlParser.parseWebXml(source, webXml, false);
         if (!success) {

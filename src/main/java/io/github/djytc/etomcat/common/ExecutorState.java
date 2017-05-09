@@ -1,4 +1,6 @@
-package io.github.djytc.etomcat;
+package io.github.djytc.etomcat.common;
+
+import org.apache.catalina.core.StandardThreadExecutor;
 
 /**
  * User: wmel
@@ -18,24 +20,16 @@ public class ExecutorState {
     private final int poolSize;
     private final int queueSize;
 
-    public ExecutorState(int maxIdleTime,
-                         int maxThreads,
-                         int minSpareThreads,
-                         int activeCount,
-                         long completedCount,
-                         int corePoolSize,
-                         int largestPoolSize,
-                         int poolSize,
-                         int queueSize) {
-        this.maxIdleTime = maxIdleTime;
-        this.maxThreads = maxThreads;
-        this.minSpareThreads = minSpareThreads;
-        this.activeCount = activeCount;
-        this.completedCount = completedCount;
-        this.corePoolSize = corePoolSize;
-        this.largestPoolSize = largestPoolSize;
-        this.poolSize = poolSize;
-        this.queueSize = queueSize;
+    public ExecutorState(StandardThreadExecutor ex) {
+        this.maxIdleTime = ex.getMaxIdleTime();
+        this.maxThreads = ex.getMaxThreads();
+        this.minSpareThreads = ex.getMinSpareThreads();
+        this.activeCount = ex.getActiveCount();
+        this.completedCount = ex.getCompletedTaskCount();
+        this.corePoolSize = ex.getCorePoolSize();
+        this.largestPoolSize = ex.getLargestPoolSize();
+        this.poolSize = ex.getPoolSize();
+        this.queueSize = ex.getQueueSize();
     }
 
     public int getMaxIdleTime() {

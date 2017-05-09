@@ -1,4 +1,4 @@
-package io.github.djytc.etomcat;
+package io.github.djytc.etomcat.common;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author alexey
  * Date: 5/20/12
  */
-class SameThreadExecutor extends ThreadPoolExecutor {
+public class SameThreadExecutor extends ThreadPoolExecutor {
     private AtomicBoolean shuttedDown = new AtomicBoolean(false);
 
     public SameThreadExecutor() {
