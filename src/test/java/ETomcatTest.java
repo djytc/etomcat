@@ -1,4 +1,6 @@
+import io.github.djytc.etomcat.jaxb.config.*;
 import io.github.djytc.etomcat.jaxb.webapp.*;
+import io.github.djytc.etomcat.jaxb.webapp.ObjectFactory;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.httpclient.cookie.CookiePolicy;
@@ -9,17 +11,12 @@ import org.jsslutils.extra.apachehttpclient.SslContextedSecureProtocolSocketFact
 import org.junit.Test;
 import io.github.djytc.etomcat.EmbeddedTomcat;
 import test.TestServlet;
-import io.github.djytc.etomcat.config.GeneralProperties;
-import io.github.djytc.etomcat.config.SslProperties;
 
 import javax.net.ssl.*;
-import javax.xml.bind.JAXBElement;
-import javax.xml.namespace.QName;
 import java.io.File;
 import java.lang.String;
 import java.net.URI;
 import java.security.*;
-import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
@@ -31,8 +28,7 @@ public class ETomcatTest {
 
     @Test
     public void test() throws Exception {
-        EmbeddedTomcat tc = new EmbeddedTomcat(createConfig());
-        setupServerSsl(tc);
+        EmbeddedTomcat tc = new EmbeddedTomcat(createTomcatConfig(), createWebApp());
         Runtime.getRuntime().addShutdownHook(new Thread(tc.shutdownHook()));
         tc.start();
         HttpClient client = new HttpClient();
@@ -48,7 +44,7 @@ public class ETomcatTest {
         System.out.println(tc.getInnerExecutorState());
     }
 
-    private static WebAppType createConfig() {
+    private static WebAppType createWebApp() {
         ObjectFactory of = new ObjectFactory();
         return new WebAppType()
                 .withVersion("3.1")
@@ -89,14 +85,16 @@ public class ETomcatTest {
                 );
     }
 
-    private static void setupServerSsl(EmbeddedTomcat tc) {
-        File keystore = new File(codeSourceDir(ETomcatTest.class), "../../src/test/resources/etomcat.p12");
-        tc.setSslProps(new SslProperties()
-                .setSslEnabled(true)
-                .setKeystoreFile(keystore.getAbsolutePath())
-                .setKeystorePass("storepass")
-                .setKeyAlias("etomcat_test"))
-                .setGeneralProps(new GeneralProperties().setPort(8443));
+    private static ETomcatConfigType createTomcatConfig() {
+        return new ETomcatConfigType(new ConnectorConfigType(), new ContextConfigType(), new ExecutorConfigType(),
+                new GeneralConfigType(), new NioConfigType(), new SocketConfigType(), new SslConfigType())
+                .withGeneralConfig(new GeneralConfigType()
+                        .withTcpPort(8443))
+                .withSslConfig(new SslConfigType()
+                        .withSslEnabled(true)
+                        .withKeystoreFile(new File(codeSourceDir(ETomcatTest.class), "../../src/test/resources/etomcat.p12").getAbsolutePath())
+                        .withKeystorePass("storepass")
+                        .withKeyAlias("etomcat_test"));
     }
 
     private static void setupClientSsl() throws Exception {

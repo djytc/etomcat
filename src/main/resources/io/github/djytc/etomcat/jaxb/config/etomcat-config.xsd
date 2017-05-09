@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns="https://djytc.github.io/config"
+           targetNamespace="https://djytc.github.io/config">
+    <xs:element name="ETomcatConfig" type="ETomcatConfigType"/>
+
+    <xs:complexType name="ConnectorConfigType">
+        <xs:sequence>
+            <xs:element name="enableLookups" type="xs:boolean" default="false" />
+            <xs:element name="maxPostSizeBytes" type="xs:int" default="2097152" />
+            <xs:element name="uriEncoding" type="xs:string" default="UTF-8" />
+            <xs:element name="maxSavePostSizeBytes" type="xs:int" default="4096" />
+            <xs:element name="acceptCount" type="xs:int" default="1000" />
+            <xs:element name="compressableMimeType" type="xs:string" default="text/html,text/xml,text/plain" />
+            <xs:element name="compression" type="xs:string" default="off" />
+            <xs:element name="compressionMinSizeBytes" type="xs:int" default="2048" />
+            <xs:element name="noCompressionUserAgents" type="xs:string" default="" />
+            <xs:element name="disableUploadTimeout" type="xs:boolean" default="false" />
+            <xs:element name="maxHttpHeaderSizeBytes" type="xs:int" default="8192" />
+            <xs:element name="maxKeepAliveRequests" type="xs:int" default="100" />
+            <xs:element name="server" type="xs:string" default="DJyTc Server" />
+            <xs:element name="useComet" type="xs:boolean" default="false" />
+            <xs:element name="useFailFastResponseWriter" type="xs:boolean" default="false" />
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="ContextConfigType">
+        <xs:sequence>
+            <xs:element name="cookies" type="xs:boolean" default="true" />
+            <xs:element name="cacheMaxSizeKb" type="xs:int" default="10240" />
+            <xs:element name="cacheObjectMaxSizeKb" type="xs:int" default="512" />
+            <xs:element name="cacheTtlSec" type="xs:int" default="5" />
+            <xs:element name="cachingAllowed" type="xs:boolean" default="false" />
+            <xs:element name="unloadDelayMs" type="xs:int" default="2000" />
+            <xs:element name="maxActiveSessions" type="xs:int" default="-1" />
+            <xs:element name="sessionTimeoutMinutes" type="xs:int" default="10" />
+            <xs:element name="postCharacterEncoding" type="xs:string" default="UTF-8" />
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="ExecutorConfigType">
+        <xs:sequence>
+            <xs:element name="name" type="xs:string" default="djytc-executor" />
+            <xs:element name="daemon" type="xs:boolean" default="true" />
+            <xs:element name="namePrefix" type="xs:string" default="djytc-" />
+            <xs:element name="maxThreads" type="xs:int" default="200" />
+            <xs:element name="minSpareThreads" type="xs:int" default="2" />
+            <xs:element name="maxIdleTimeMs" type="xs:int" default="600000" />
+            <xs:element name="threadPriority" type="xs:int" default="5" />
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="GeneralConfigType">
+        <xs:sequence>
+            <xs:element name="hostname" type="xs:string" default="localhost" />
+            <xs:element name="tcpPort" type="xs:int" default="8080" />
+            <xs:element name="docBaseDir" type="xs:string" default="" />
+            <xs:element name="contextPath" type="xs:string" default="" />
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="NioConfigType">
+        <xs:sequence>
+            <xs:element name="useSendfile" type="xs:boolean" default="true" />
+            <xs:element name="acceptorThreadCount" type="xs:int" default="2" />
+            <xs:element name="acceptorThreadPriority" type="xs:int" default="5" />
+            <xs:element name="pollerThreadCount" type="xs:int" default="2" />
+            <xs:element name="pollerThreadPriority" type="xs:int" default="5" />
+            <xs:element name="selectorTimeoutMs" type="xs:int" default="1000" />
+            <xs:element name="maxSelectors" type="xs:int" default="200" />
+            <xs:element name="maxSpareSelectors" type="xs:int" default="-1" />
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="SocketConfigType">
+        <xs:sequence>
+            <xs:element name="directBuffer" type="xs:boolean" default="false" />
+            <xs:element name="rxBufSizeBytes" type="xs:int" default="25188" />
+            <xs:element name="txBufSizeBytes" type="xs:int" default="43800" />
+            <xs:element name="appReadBufSizeBytes" type="xs:int" default="8192" />
+            <xs:element name="appWriteBufSizeBytes" type="xs:int" default="8192" />
+            <xs:element name="bufferPool" type="xs:int" default="500" />
+            <xs:element name="bufferPoolSizeBytes" type="xs:int" default="104857600" />
+            <xs:element name="processorCache" type="xs:int" default="500" />
+            <xs:element name="keyCache" type="xs:int" default="500" />
+            <xs:element name="eventCache" type="xs:int" default="500" />
+            <xs:element name="tcpNoDelay" type="xs:boolean" default="false" />
+            <xs:element name="soKeepAlive" type="xs:boolean" default="false" />
+            <xs:element name="ooBInline" type="xs:boolean" default="true" />
+            <xs:element name="soReuseAddress" type="xs:boolean" default="true" />
+            <xs:element name="soLingerOn" type="xs:boolean" default="true" />
+            <xs:element name="soLingerTimeSec" type="xs:int" default="25" />
+            <xs:element name="soTimeoutMs" type="xs:int" default="5000" />
+            <xs:element name="soTrafficClass" type="xs:int" default="28" />
+            <xs:element name="performanceConnectionTime" type="xs:int" default="1" />
+            <xs:element name="performanceLatency" type="xs:int" default="0" />
+            <xs:element name="performanceBandwidth" type="xs:int" default="1" />
+            <xs:element name="unlockTimeoutMs" type="xs:int" default="250" />
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="SslConfigType">
+        <xs:sequence>
+            <xs:element name="algorithm" type="xs:string" default="SunX509" />
+            <xs:element name="clientAuth" type="xs:boolean" default="false" />
+            <xs:element name="sslEnabled" type="xs:boolean" default="false" />
+            <xs:element name="keystoreFile" type="xs:string" default="" />
+            <xs:element name="keystorePass" type="xs:string" default="" />
+            <xs:element name="keyAlias" type="xs:string" default="" />
+            <xs:element name="keystoreType" type="xs:string" default="pkcs12" />
+            <xs:element name="keystoreProvider" type="xs:string" default="SunJSSE" />
+            <xs:element name="truststoreFile" type="xs:string" default="" />
+            <xs:element name="truststorePass" type="xs:string" default="" />
+            <xs:element name="truststoreType" type="xs:string" default="pkcs12" />
+            <xs:element name="truststoreProvider" type="xs:string" default="SunJSSE" />
+            <xs:element name="protocol" type="xs:string" default="TLS" />
+            <xs:element name="ciphers" type="xs:string" default="TLS_RSA_WITH_AES_128_CBC_SHA,TLS_DHE_RSA_WITH_AES_128_CBC_SHA,TLS_DHE_DSS_WITH_AES_128_CBC_SHA,SSL_RSA_WITH_3DES_EDE_CBC_SHA,SSL_DHE_RSA_WITH_3DES_EDE_CBC_SHA,SSL_DHE_DSS_WITH_3DES_EDE_CBC_SHA" />
+            <xs:element name="sessionCacheSize" type="xs:int" default="0" />
+            <xs:element name="sessionTimeoutSecs" type="xs:int" default="86400" />
+            <xs:element name="crlFile" type="xs:string" default="86400" />
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="ETomcatConfigType">
+        <xs:sequence>
+            <xs:element name="connectorConfig" type="ConnectorConfigType" nillable="false"/>
+            <xs:element name="contextConfig" type="ContextConfigType"/>
+            <xs:element name="executorConfig" type="ExecutorConfigType"/>
+            <xs:element name="generalConfig" type="GeneralConfigType"/>
+            <xs:element name="nioConfig" type="NioConfigType"/>
+            <xs:element name="socketConfig" type="SocketConfigType"/>
+            <xs:element name="sslConfig" type="SslConfigType"/>
+        </xs:sequence>
+    </xs:complexType>
+</xs:schema>

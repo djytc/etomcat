@@ -1,49 +1,36 @@
 package io.github.djytc.etomcat;
 
+import io.github.djytc.etomcat.jaxb.config.*;
 import io.github.djytc.etomcat.jaxb.webapp.WebAppType;
 import org.apache.catalina.*;
 import org.apache.catalina.connector.Connector;
 import org.apache.catalina.core.*;
-import org.apache.catalina.webresources.StandardRoot;
 import org.apache.coyote.http11.Http11NioProtocol;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 import org.apache.tomcat.util.scan.StandardJarScanner;
-import io.github.djytc.etomcat.config.*;
 import io.github.djytc.etomcat.failfast.FailFastConnector;
 import io.github.djytc.etomcat.valves.PostCharacterEncodingValve;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-
-import static java.io.File.separator;
 
 /**
  * User: alexkasko
  * Date: 12/3/14
  */
 public class EmbeddedTomcat {
-
     private final Log logger = LogFactory.getLog(EmbeddedTomcat.class);
 
+    private final ETomcatConfigType cf;
+    private final WebAppType webapp;
+    
     private boolean started = false;
     private Server embedded;
 
-    private GeneralProperties generalProps = new GeneralProperties();
-    private FsProperties fsProps = new FsProperties();
-    private HostProperties hostProps = new HostProperties();
-    private ContextProperties contextProps = new ContextProperties();
-    private ConnectorProperties connectorProps = new ConnectorProperties();
-    private NioProperties nioProps = new NioProperties();
-    private SocketProperties socketProps = new SocketProperties();
-    private SslProperties sslProps = new SslProperties();
-    private ExecutorProperties executorProps = new ExecutorProperties();
-
-    private final WebAppType webappConfig;
-
-    public EmbeddedTomcat(WebAppType webappConfig) {
-        this.webappConfig = webappConfig;
+    public EmbeddedTomcat(ETomcatConfigType cf, WebAppType webapp) {
+        this.cf = cf;
+        this.webapp = webapp;
     }
 
     public synchronized EmbeddedTomcat start() {
@@ -132,8 +119,8 @@ public class EmbeddedTomcat {
         host.setUnpackWARs(false);
 
         host.setAppBase("NOT_SUPPORTED_SETTING");
-        host.setName(hostProps.getName());
-        host.setErrorReportValveClass(hostProps.getErrorReportValveClass());
+        host.setName(cf.getGeneralConfig().getHostname());
+        host.setErrorReportValveClass("org.apache.catalina.valves.ErrorReportValve");
         //todo: delete
         try {
             host.setWorkDir(Files.createTempDirectory("etomcat").toString());
@@ -144,6 +131,7 @@ public class EmbeddedTomcat {
     }
 
     private StandardContext createContext() {
+        ContextConfigType contextConf = cf.getContextConfig();
         StandardContext context = new StandardContext();
 //        context.setAltDDName(paths.getWebXmlFile());
         context.setCrossContext(true);
@@ -161,47 +149,52 @@ public class EmbeddedTomcat {
         context.setIgnoreAnnotations(true);
         context.setWrapperClass(EmbeddedWrapper.class.getName());
 
-        context.setPath(generalProps.getContextPath());
-        context.setCookies(contextProps.isCookies());
+        context.setPath(cf.getGeneralConfig().getContextPath());        
+        context.setCookies(contextConf.isCookies());
         // todo
 //        context.setDocBase(paths.getDocBaseDir());
-        context.setUnloadDelay(contextProps.getUnloadDelayMs());
-        context.setSessionTimeout(contextProps.getSessionTimeoutMinutes());
+        context.setUnloadDelay(contextConf.getUnloadDelayMs());
+        context.setSessionTimeout(contextConf.getSessionTimeoutMinutes());
 
-        if(contextProps.getPostCharacterEncoding().length() > 0) {
+        if(contextConf.getPostCharacterEncoding().length() > 0) {
             logger.debug("UTF-8 encoding enabled for all requests");
-            Valve valve = new PostCharacterEncodingValve(contextProps.getPostCharacterEncoding());
+            Valve valve = new PostCharacterEncodingValve(contextConf.getPostCharacterEncoding());
             context.addValve(valve);
         }
 
         context.setLoader(new EmbeddedLoader());
-        if(generalProps.isUseFsResources()) {
-            logger.debug("Using FileDirContext");
-            context.setResources(new StandardRoot(context));
-        } else {
+//        todo
+//        if(cf.getGeneralConfig().isUseFsResources()) {
+//            logger.debug("Using FileDirContext");
+//            context.setResources(new StandardRoot(context));
+//        } else {
             logger.debug("Using EmbeddedDirContext");
             context.setResources(new EmbeddedResourceRoot(context));
-        }
-        context.getResources().setCacheMaxSize(contextProps.getCacheMaxSizeKb());
-        context.getResources().setCacheObjectMaxSize(contextProps.getCacheObjectMaxSizeKb());
-        context.getResources().setCacheTtl(contextProps.getCacheTtlSec());
-        context.getResources().setCachingAllowed(contextProps.isCachingAllowed());
+//        }
+        context.getResources().setCacheMaxSize(contextConf.getCacheMaxSizeKb());
+        context.getResources().setCacheObjectMaxSize(contextConf.getCacheObjectMaxSizeKb());
+        context.getResources().setCacheTtl(contextConf.getCacheTtlSec());
+        context.getResources().setCachingAllowed(contextConf.isCachingAllowed());
 
         context.setManager(createManager());
-        context.addLifecycleListener(new EmbeddedContextConfig(context, webappConfig));
+        context.addLifecycleListener(new EmbeddedContextConfig(context, webapp));
         return context;
     }
 
     private EmbeddedManager createManager() {
         EmbeddedManager manager = new EmbeddedManager();
-        manager.setMaxActiveSessions(contextProps.getMaxActiveSessions());
+        manager.setMaxActiveSessions(cf.getContextConfig().getMaxActiveSessions());
         return manager;
     }
 
     private Connector createConnector() {
+        ConnectorConfigType connectorConf = cf.getConnectorConfig();
+        NioConfigType nioConf = cf.getNioConfig();
+        SocketConfigType socketConf = cf.getSocketConfig();
+        SslConfigType sslConf = cf.getSslConfig();
         Connector con = null;
         try {
-            if(connectorProps.isUseFailFastResponseWriter()) {
+            if(connectorConf.isUseFailFastResponseWriter()) {
                 con = new FailFastConnector("org.apache.coyote.http11.Http11NioProtocol");
             } else {
                 con = new Connector("org.apache.coyote.http11.Http11NioProtocol");
@@ -210,90 +203,91 @@ public class EmbeddedTomcat {
             throw new IllegalStateException(e);
         }
         Http11NioProtocol proto = (Http11NioProtocol) con.getProtocolHandler();
-        con.setEnableLookups(connectorProps.isEnableLookups());
-        con.setMaxPostSize(connectorProps.getMaxPostSizeBytes());
-        con.setURIEncoding(connectorProps.getUriEncoding());
-        con.setProperty("acceptCount", Integer.toString(connectorProps.getAcceptCount()));
-        proto.setCompressibleMimeType(connectorProps.getCompressableMimeType());
-        proto.setCompression(connectorProps.getCompression());
-        proto.setCompressionMinSize(connectorProps.getCompressionMinSizeBytes());
-        if(!connectorProps.getNoCompressionUserAgents().isEmpty()) proto.setNoCompressionUserAgents(connectorProps.getNoCompressionUserAgents());
-        proto.setDisableUploadTimeout(connectorProps.isDisableUploadTimeout());
-        proto.setMaxHttpHeaderSize(connectorProps.getMaxHttpHeaderSizeBytes());
-        proto.setMaxKeepAliveRequests(connectorProps.getMaxKeepAliveRequests());
-        con.setPort(generalProps.getPort());
-        proto.setServer(connectorProps.getServer());
+        con.setEnableLookups(connectorConf.isEnableLookups());
+        con.setMaxPostSize(connectorConf.getMaxPostSizeBytes());
+        con.setURIEncoding(connectorConf.getUriEncoding());
+        con.setProperty("acceptCount", Integer.toString(connectorConf.getAcceptCount()));
+        proto.setCompressibleMimeType(connectorConf.getCompressableMimeType());
+        proto.setCompression(connectorConf.getCompression());
+        proto.setCompressionMinSize(connectorConf.getCompressionMinSizeBytes());
+        if(!connectorConf.getNoCompressionUserAgents().isEmpty()) proto.setNoCompressionUserAgents(connectorConf.getNoCompressionUserAgents());
+        proto.setDisableUploadTimeout(connectorConf.isDisableUploadTimeout());
+        proto.setMaxHttpHeaderSize(connectorConf.getMaxHttpHeaderSizeBytes());
+        proto.setMaxKeepAliveRequests(connectorConf.getMaxKeepAliveRequests());
+        con.setPort(cf.getGeneralConfig().getTcpPort());
+        proto.setServer(connectorConf.getServer());
 
-        proto.setUseSendfile(nioProps.isUseSendfile());
-        con.setProperty("acceptorThreadCount", Integer.toString(nioProps.getAcceptorThreadCount()));
-        proto.setAcceptorThreadPriority(nioProps.getAcceptorThreadPriority());
-        proto.setPollerThreadCount(nioProps.getPollerThreadCount());
-        proto.setPollerThreadPriority(nioProps.getPollerThreadPriority());
-        proto.setSelectorTimeout(nioProps.getSelectorTimeoutMs());
+        proto.setUseSendfile(nioConf.isUseSendfile());
+        con.setProperty("acceptorThreadCount", Integer.toString(nioConf.getAcceptorThreadCount()));
+        proto.setAcceptorThreadPriority(nioConf.getAcceptorThreadPriority());
+        proto.setPollerThreadCount(nioConf.getPollerThreadCount());
+        proto.setPollerThreadPriority(nioConf.getPollerThreadPriority());
+        proto.setSelectorTimeout(nioConf.getSelectorTimeoutMs());
 //        proto.getEndpoint().setBindOnInit(false);
-        con.setProperty("useComet", Boolean.toString(connectorProps.isUseComet()));
+        con.setProperty("useComet", Boolean.toString(connectorConf.isUseComet()));
         // made all socket options lazy to prevent crash on winxp
-        if(socketProps.isDirectBuffer()) con.setProperty("socket.directBuffer", Boolean.toString(true));
-        if(25188 != socketProps.getRxBufSizeBytes()) con.setProperty("socket.rxBufSize", Integer.toString(socketProps.getRxBufSizeBytes()));
-        if(43800 != socketProps.getTxBufSizeBytes()) con.setProperty("socket.txBufSize", Integer.toString(socketProps.getTxBufSizeBytes()));
-        if(8192 != socketProps.getAppReadBufSizeBytes()) con.setProperty("socket.appReadBufSize", Integer.toString(socketProps.getAppReadBufSizeBytes()));
-        if(8192 != socketProps.getAppWriteBufSizeBytes()) con.setProperty("socket.appWriteBufSize", Integer.toString(socketProps.getAppWriteBufSizeBytes()));
-        if(500 != socketProps.getBufferPool()) con.setProperty("socket.bufferPool", Integer.toString(socketProps.getBufferPool()));
-        if(104857600 != socketProps.getBufferPoolSizeBytes()) con.setProperty("socket.bufferPoolSize", Integer.toString(socketProps.getBufferPoolSizeBytes()));
-        if(500 != socketProps.getProcessorCache())con.setProperty("socket.processorCache", Integer.toString(socketProps.getProcessorCache()));
-        if(500 != socketProps.getKeyCache()) con.setProperty("socket.keyCache", Integer.toString(socketProps.getKeyCache()));
-        if(500 != socketProps.getEventCache()) con.setProperty("socket.eventCache", Integer.toString(socketProps.getEventCache()));
-        if(socketProps.isTcpNoDelay()) con.setProperty("socket.tcpNoDelay", Boolean.toString(true));
-        if(socketProps.isSoKeepAlive()) con.setProperty("socket.soKeepAlive", Boolean.toString(true));
-        if(!socketProps.isOoBInline()) con.setProperty("socket.ooBInline", Boolean.toString(false));
-        if(!socketProps.isSoReuseAddress()) con.setProperty("socket.soReuseAddress", Boolean.toString(false));
-        if(!socketProps.isSoLingerOn()) con.setProperty("socket.soLingerOn", Boolean.toString(false));
-        if(25 != socketProps.getSoLingerTimeSec())con.setProperty("socket.soLingerTime", Integer.toString(socketProps.getSoLingerTimeSec()));
-        if(5000 != socketProps.getSoTimeoutMs()) con.setProperty("socket.soTimeout", Integer.toString(socketProps.getSoTimeoutMs()));
-        if((0x04 | 0x08 | 0x010) != socketProps.getSoTrafficClass()) con.setProperty("socket.soTrafficClass", Integer.toString(socketProps.getSoTrafficClass()));
-        if(1 != socketProps.getPerformanceConnectionTime()) con.setProperty("socket.performanceConnectionTime", Integer.toString(socketProps.getPerformanceConnectionTime()));
-        if(0 != socketProps.getPerformanceLatency()) con.setProperty("socket.performanceLatency", Integer.toString(socketProps.getPerformanceLatency()));
-        if(1 != socketProps.getPerformanceBandwidth()) con.setProperty("socket.performanceBandwidth", Integer.toString(socketProps.getPerformanceBandwidth()));
-        if(250 != socketProps.getUnlockTimeoutMs())con.setProperty("socket.unlockTimeout", Integer.toString(socketProps.getUnlockTimeoutMs()));
-        con.setProperty("selectorPool.maxSelectors", Integer.toString(nioProps.getMaxSelectors()));
-        con.setProperty("selectorPool.maxSpareSelectors", Integer.toString(nioProps.getMaxSpareSelectors()));
+        if(socketConf.isDirectBuffer()) con.setProperty("socket.directBuffer", Boolean.toString(true));
+        if(25188 != socketConf.getRxBufSizeBytes()) con.setProperty("socket.rxBufSize", Integer.toString(socketConf.getRxBufSizeBytes()));
+        if(43800 != socketConf.getTxBufSizeBytes()) con.setProperty("socket.txBufSize", Integer.toString(socketConf.getTxBufSizeBytes()));
+        if(8192 != socketConf.getAppReadBufSizeBytes()) con.setProperty("socket.appReadBufSize", Integer.toString(socketConf.getAppReadBufSizeBytes()));
+        if(8192 != socketConf.getAppWriteBufSizeBytes()) con.setProperty("socket.appWriteBufSize", Integer.toString(socketConf.getAppWriteBufSizeBytes()));
+        if(500 != socketConf.getBufferPool()) con.setProperty("socket.bufferPool", Integer.toString(socketConf.getBufferPool()));
+        if(104857600 != socketConf.getBufferPoolSizeBytes()) con.setProperty("socket.bufferPoolSize", Integer.toString(socketConf.getBufferPoolSizeBytes()));
+        if(500 != socketConf.getProcessorCache())con.setProperty("socket.processorCache", Integer.toString(socketConf.getProcessorCache()));
+        if(500 != socketConf.getKeyCache()) con.setProperty("socket.keyCache", Integer.toString(socketConf.getKeyCache()));
+        if(500 != socketConf.getEventCache()) con.setProperty("socket.eventCache", Integer.toString(socketConf.getEventCache()));
+        if(socketConf.isTcpNoDelay()) con.setProperty("socket.tcpNoDelay", Boolean.toString(true));
+        if(socketConf.isSoKeepAlive()) con.setProperty("socket.soKeepAlive", Boolean.toString(true));
+        if(!socketConf.isOoBInline()) con.setProperty("socket.ooBInline", Boolean.toString(false));
+        if(!socketConf.isSoReuseAddress()) con.setProperty("socket.soReuseAddress", Boolean.toString(false));
+        if(!socketConf.isSoLingerOn()) con.setProperty("socket.soLingerOn", Boolean.toString(false));
+        if(25 != socketConf.getSoLingerTimeSec())con.setProperty("socket.soLingerTime", Integer.toString(socketConf.getSoLingerTimeSec()));
+        if(5000 != socketConf.getSoTimeoutMs()) con.setProperty("socket.soTimeout", Integer.toString(socketConf.getSoTimeoutMs()));
+        if((0x04 | 0x08 | 0x010) != socketConf.getSoTrafficClass()) con.setProperty("socket.soTrafficClass", Integer.toString(socketConf.getSoTrafficClass()));
+        if(1 != socketConf.getPerformanceConnectionTime()) con.setProperty("socket.performanceConnectionTime", Integer.toString(socketConf.getPerformanceConnectionTime()));
+        if(0 != socketConf.getPerformanceLatency()) con.setProperty("socket.performanceLatency", Integer.toString(socketConf.getPerformanceLatency()));
+        if(1 != socketConf.getPerformanceBandwidth()) con.setProperty("socket.performanceBandwidth", Integer.toString(socketConf.getPerformanceBandwidth()));
+        if(250 != socketConf.getUnlockTimeoutMs())con.setProperty("socket.unlockTimeout", Integer.toString(socketConf.getUnlockTimeoutMs()));
+        con.setProperty("selectorPool.maxSelectors", Integer.toString(nioConf.getMaxSelectors()));
+        con.setProperty("selectorPool.maxSpareSelectors", Integer.toString(nioConf.getMaxSpareSelectors()));
 
-        if(sslProps.isSslEnabled()) {
+        if(sslConf.isSslEnabled()) {
             proto.setSSLEnabled(true);
             con.setScheme("https");
             con.setSecure(true);
-            proto.setKeystoreFile(sslProps.getKeystoreFile());
-            proto.setKeystorePass(sslProps.getKeystorePass());
-            proto.setKeystoreType(sslProps.getKeystoreType());
-            proto.setProperty("keystoreProvider", sslProps.getKeystoreProvider());
-            proto.setKeyAlias(sslProps.getKeyAlias());
-            proto.setAlgorithm(sslProps.getAlgorithm());
-            if(sslProps.isClientAuth()) {
+            proto.setKeystoreFile(sslConf.getKeystoreFile());
+            proto.setKeystorePass(sslConf.getKeystorePass());
+            proto.setKeystoreType(sslConf.getKeystoreType());
+            proto.setProperty("keystoreProvider", sslConf.getKeystoreProvider());
+            proto.setKeyAlias(sslConf.getKeyAlias());
+            proto.setAlgorithm(sslConf.getAlgorithm());
+            if(sslConf.isClientAuth()) {
                 proto.setClientAuth("true");
-                proto.setTruststoreFile(sslProps.getTruststoreFile());
-                proto.setTruststorePass(sslProps.getTruststorePass());
-                proto.setTruststoreType(sslProps.getTruststoreType());
-                con.setProperty("truststoreProvider", sslProps.getTruststoreProvider());
+                proto.setTruststoreFile(sslConf.getTruststoreFile());
+                proto.setTruststorePass(sslConf.getTruststorePass());
+                proto.setTruststoreType(sslConf.getTruststoreType());
+                con.setProperty("truststoreProvider", sslConf.getTruststoreProvider());
             }
-            proto.setSslProtocol(sslProps.getProtocol());
-            proto.setCiphers(sslProps.getCiphers());
-            con.setProperty("sessionCacheSize", Integer.toString(sslProps.getSessionCacheSize()));
-            con.setProperty("sessionTimeout", Integer.toString(sslProps.getSessionTimeoutSecs()));
-            if(!sslProps.getCrlFile().isEmpty()) con.setProperty("crlFile", sslProps.getCrlFile());
+            proto.setSslProtocol(sslConf.getProtocol());
+            proto.setCiphers(sslConf.getCiphers());
+            con.setProperty("sessionCacheSize", Integer.toString(sslConf.getSessionCacheSize()));
+            con.setProperty("sessionTimeout", Integer.toString(sslConf.getSessionTimeoutSecs()));
+            if(!sslConf.getCrlFile().isEmpty()) con.setProperty("crlFile", sslConf.getCrlFile());
         }
 
         return con;
     }
 
     private Executor createExecutor() {
+        ExecutorConfigType executorConf = cf.getExecutorConfig();
         StandardThreadExecutor executor = new StandardThreadExecutor();
-        executor.setThreadPriority(executorProps.getThreadPriority());
-		executor.setName(executorProps.getName());
-		executor.setDaemon(executorProps.isDaemon());
-		executor.setNamePrefix(executorProps.getNamePrefix());
-		executor.setMaxThreads(executorProps.getMaxThreads());
-		executor.setMinSpareThreads(executorProps.getMinSpareThreads());
-		executor.setMaxIdleTime(executorProps.getMaxIdleTimeMs());
+        executor.setThreadPriority(executorConf.getThreadPriority());
+		executor.setName(executorConf.getName());
+		executor.setDaemon(executorConf.isDaemon());
+		executor.setNamePrefix(executorConf.getNamePrefix());
+		executor.setMaxThreads(executorConf.getMaxThreads());
+		executor.setMinSpareThreads(executorConf.getMinSpareThreads());
+		executor.setMaxIdleTime(executorConf.getMaxIdleTimeMs());
 		return executor;
     }
 
@@ -308,121 +302,6 @@ public class EmbeddedTomcat {
                 executorImpl.getLargestPoolSize(),
                 executorImpl.getPoolSize(),
                 executorImpl.getQueueSize());
-    }
-
-//    class Paths {
-//        private final String baseDir;
-//        private final String confDir;
-//        private final String workDir;
-//        private final String docBaseDir;
-//        private final String webXmlFile;
-//        private final String keystoreFile;
-//        private final String truststoreFile;
-//        private final String crlFile;
-//
-//        private Paths(File baseDir, String confDir, String workDir, String docBaseDir, String webXmlFile, String keystoreFile, String truststoreFile, String crlFile) {
-//            this.baseDir = baseDir.getAbsolutePath();
-//            this.confDir = this.baseDir + separator + confDir;
-//            this.workDir = this.baseDir + separator + workDir;
-//            this.docBaseDir = this.baseDir + separator + docBaseDir;
-//            this.webXmlFile = this.confDir + separator + webXmlFile;
-//            this.keystoreFile = this.confDir + separator + keystoreFile;
-//            this.truststoreFile = this.confDir + separator + truststoreFile;
-//            this.crlFile = this.confDir + separator + crlFile;
-//        }
-//
-//        public String getBaseDir() {
-//            return baseDir;
-//        }
-//
-//        public String getConfDir() {
-//            return confDir;
-//        }
-//
-//        public String getWorkDir() {
-//            return workDir;
-//        }
-//
-//        public String getDocBaseDir() {
-//            return docBaseDir;
-//        }
-//
-//        public String getWebXmlFile() {
-//            return webXmlFile;
-//        }
-//
-//        public String getKeystoreFile() {
-//            return keystoreFile;
-//        }
-//
-//        public String getTruststoreFile() {
-//            return truststoreFile;
-//        }
-//
-//        public String getCrlFile() {
-//            return crlFile;
-//        }
-//
-//        @Override
-//        public String toString() {
-//            final StringBuilder sb = new StringBuilder();
-//            sb.append("Paths");
-//            sb.append("{baseDir='").append(baseDir).append('\'');
-//            sb.append(", confDir='").append(confDir).append('\'');
-//            sb.append(", workDir='").append(workDir).append('\'');
-//            sb.append(", docBaseDir='").append(docBaseDir).append('\'');
-//            sb.append(", webXmlFile='").append(webXmlFile).append('\'');
-//            sb.append(", keystoreFile='").append(keystoreFile).append('\'');
-//            sb.append(", truststoreFile='").append(truststoreFile).append('\'');
-//            sb.append(", crlFile='").append(crlFile).append('\'');
-//            sb.append('}');
-//            return sb.toString();
-//        }
-//    }
-
-    public EmbeddedTomcat setGeneralProps(GeneralProperties generalProps) {
-        this.generalProps = generalProps;
-        return this;
-    }
-
-    public EmbeddedTomcat setFsProps(FsProperties fsProps) {
-        this.fsProps = fsProps;
-        return this;
-    }
-
-    public EmbeddedTomcat setHostProps(HostProperties hostProps) {
-        this.hostProps = hostProps;
-        return this;
-    }
-
-    public EmbeddedTomcat setContextProps(ContextProperties contextProps) {
-        this.contextProps = contextProps;
-        return this;
-    }
-
-    public EmbeddedTomcat setConnectorProps(ConnectorProperties connectorProps) {
-        this.connectorProps = connectorProps;
-        return this;
-    }
-
-    public EmbeddedTomcat setNioProps(NioProperties nioProps) {
-        this.nioProps = nioProps;
-        return this;
-    }
-
-    public EmbeddedTomcat setSocketProps(SocketProperties socketProps) {
-        this.socketProps = socketProps;
-        return this;
-    }
-
-    public EmbeddedTomcat setSslProps(SslProperties sslProps) {
-        this.sslProps = sslProps;
-        return this;
-    }
-
-    public EmbeddedTomcat setExecutorProps(ExecutorProperties executorProps) {
-        this.executorProps = executorProps;
-        return this;
     }
 
     public Runnable shutdownHook() {

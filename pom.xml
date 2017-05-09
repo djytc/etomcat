@@ -92,6 +92,31 @@
                 <groupId>org.apache.cxf</groupId>
                 <artifactId>cxf-xjc-plugin</artifactId>
                 <version>${version.cxf_xjc}</version>
+                <configuration>
+                    <xsdOptions>
+                        <xsdOption>
+                            <extension>true</extension>
+                            <extensionArgs>
+                                <arg>-Xcommons-lang</arg>
+                                <arg>-Xvalue-constructor</arg>
+                                <arg>-Xdefault-value</arg>
+                                <arg>-Xfluent-api</arg>
+                                <arg>-no-header</arg>
+                            </extensionArgs>
+                        </xsdOption>
+                    </xsdOptions>
+                    <extensions>
+                        <extension>org.jvnet.jaxb2_commons:jaxb2-commons-lang:${version.jaxb2_commons_lang}
+                        </extension>
+                        <extension>
+                            org.jvnet.jaxb2_commons:jaxb2-value-constructor:${version.jaxb2_value_constructor}
+                        </extension>
+                        <extension>org.jvnet.jaxb2_commons:jaxb2-default-value:${version.jaxb2_default_value}
+                        </extension>
+                        <extension>org.jvnet.jaxb2_commons:jaxb2-fluent-api:${version.jaxb2_fluent_api}
+                        </extension>
+                    </extensions>
+                </configuration>
                 <executions>
                     <execution>
                         <id>webapp</id>
@@ -102,33 +127,14 @@
                         <configuration>
                             <xsdOptions>
                                 <xsdOption>
-                                    <extension>true</extension>
                                     <xsd>
                                         ${project.basedir}/src/main/resources/io/github/djytc/etomcat/jaxb/webapp/web-app_3_1.xsd
                                     </xsd>
                                     <bindingFile>
                                         ${project.basedir}/src/main/resources/io/github/djytc/etomcat/jaxb/webapp/web-app_3_1.xjb
                                     </bindingFile>
-                                    <extensionArgs>
-                                        <arg>-Xcommons-lang</arg>
-                                        <arg>-Xvalue-constructor</arg>
-                                        <arg>-Xdefault-value</arg>
-                                        <arg>-Xfluent-api</arg>
-                                        <arg>-no-header</arg>
-                                    </extensionArgs>
                                 </xsdOption>
                             </xsdOptions>
-                            <extensions>
-                                <extension>org.jvnet.jaxb2_commons:jaxb2-commons-lang:${version.jaxb2_commons_lang}
-                                </extension>
-                                <extension>
-                                    org.jvnet.jaxb2_commons:jaxb2-value-constructor:${version.jaxb2_value_constructor}
-                                </extension>
-                                <extension>org.jvnet.jaxb2_commons:jaxb2-default-value:${version.jaxb2_default_value}
-                                </extension>
-                                <extension>org.jvnet.jaxb2_commons:jaxb2-fluent-api:${version.jaxb2_fluent_api}
-                                </extension>
-                            </extensions>
                         </configuration>
                     </execution>
                     <execution>
@@ -140,33 +146,33 @@
                         <configuration>
                             <xsdOptions>
                                 <xsdOption>
-                                    <extension>true</extension>
                                     <xsd>
                                         ${project.basedir}/src/main/resources/io/github/djytc/etomcat/jaxb/log4j2/Log4j-config.xsd
                                     </xsd>
                                     <bindingFile>
                                         ${project.basedir}/src/main/resources/io/github/djytc/etomcat/jaxb/log4j2/Log4j-config.xjb
                                     </bindingFile>
-                                    <extensionArgs>
-                                        <arg>-Xcommons-lang</arg>
-                                        <arg>-Xvalue-constructor</arg>
-                                        <arg>-Xdefault-value</arg>
-                                        <arg>-Xfluent-api</arg>
-                                        <arg>-no-header</arg>
-                                    </extensionArgs>
                                 </xsdOption>
                             </xsdOptions>
-                            <extensions>
-                                <extension>org.jvnet.jaxb2_commons:jaxb2-commons-lang:${version.jaxb2_commons_lang}
-                                </extension>
-                                <extension>
-                                    org.jvnet.jaxb2_commons:jaxb2-value-constructor:${version.jaxb2_value_constructor}
-                                </extension>
-                                <extension>org.jvnet.jaxb2_commons:jaxb2-default-value:${version.jaxb2_default_value}
-                                </extension>
-                                <extension>org.jvnet.jaxb2_commons:jaxb2-fluent-api:${version.jaxb2_fluent_api}
-                                </extension>
-                            </extensions>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>config</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>xsdtojava</goal>
+                        </goals>
+                        <configuration>
+                            <xsdOptions>
+                                <xsdOption>
+                                    <xsd>
+                                        ${project.basedir}/src/main/resources/io/github/djytc/etomcat/jaxb/config/etomcat-config.xsd
+                                    </xsd>
+                                    <bindingFile>
+                                        ${project.basedir}/src/main/resources/io/github/djytc/etomcat/jaxb/config/etomcat-config.xjb
+                                    </bindingFile>
+                                </xsdOption>
+                            </xsdOptions>
                         </configuration>
                     </execution>
                 </executions>

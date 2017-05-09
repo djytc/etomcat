@@ -1,0 +1,9 @@
+<jxb:bindings version="2.0"
+              xmlns:jxb="http://java.sun.com/xml/ns/jaxb"
+              xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <jxb:bindings schemaLocation="etomcat-config.xsd">
+        <jxb:schemaBindings>
+            <jxb:package name="io.github.djytc.etomcat.jaxb.config"/>
+        </jxb:schemaBindings>
+    </jxb:bindings>
+</jxb:bindings>
