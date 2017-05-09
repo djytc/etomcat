@@ -55,6 +55,7 @@
             <xs:element name="hostname" type="xs:string" default="localhost" />
             <xs:element name="tcpPort" type="xs:int" default="8080" />
             <xs:element name="docBaseDir" type="xs:string" default="" />
+            <xs:element name="webAppMount" type="xs:string" default="/" />
             <xs:element name="workDir" type="xs:string" default="" />
             <xs:element name="contextPath" type="xs:string" default="" />
             <xs:element name="registerShutdownHook" type="xs:boolean" default="true" />

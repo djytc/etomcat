@@ -122,8 +122,8 @@ public class ETomcat {
         return engine;
     }
 
-    private StandardHost createHost() {
-        StandardHost host = new StandardHost();
+    private EmbeddedHost createHost() {
+        EmbeddedHost host = new EmbeddedHost();
         host.setAutoDeploy(false);
         host.setDeployOnStartup(false);
         host.setDeployXML(false);
@@ -150,6 +150,7 @@ public class ETomcat {
 
     private StandardContext createContext() {
         ContextConfigType contextConf = cf.getContextConfig();
+        GeneralConfigType generalConf = cf.getGeneralConfig();
         StandardContext context = new StandardContext();
 //        context.setAltDDName(paths.getWebXmlFile());
         context.setCrossContext(true);
@@ -167,10 +168,10 @@ public class ETomcat {
         context.setIgnoreAnnotations(true);
         context.setWrapperClass(EmbeddedWrapper.class.getName());
 
-        context.setPath(cf.getGeneralConfig().getContextPath());        
+        context.setPath(generalConf.getContextPath());
         context.setCookies(contextConf.isCookies());
-        if (!cf.getGeneralConfig().getDocBaseDir().isEmpty()) {
-            context.setDocBase(cf.getGeneralConfig().getDocBaseDir());
+        if (!generalConf.getDocBaseDir().isEmpty()) {
+            context.setDocBase(generalConf.getDocBaseDir());
         }
         context.setUnloadDelay(contextConf.getUnloadDelayMs());
         context.setSessionTimeout(contextConf.getSessionTimeoutMinutes());
@@ -182,12 +183,12 @@ public class ETomcat {
         }
 
         context.setLoader(new EmbeddedLoader());
-        if(!cf.getGeneralConfig().getDocBaseDir().isEmpty()) {
-            logger.debug("Using FileDirContext");
-            context.setResources(new StandardRoot(context));
+        if(!generalConf.getDocBaseDir().isEmpty()) {
+            logger.debug("Using DirectoryResourceRoot");
+            context.setResources(new DirectoryResourceRoot(context, generalConf.getDocBaseDir(), generalConf.getWebAppMount()));
         } else {
-            logger.debug("Using EmbeddedDirContext");
-            context.setResources(new EmbeddedResourceRoot(context));
+            logger.debug("Using NoResourcesRoot");
+            context.setResources(new NoResourcesRoot(context));
         }
         context.getResources().setCacheMaxSize(contextConf.getCacheMaxSizeKb());
         context.getResources().setCacheObjectMaxSize(contextConf.getCacheObjectMaxSizeKb());

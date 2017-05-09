@@ -1,23 +1,37 @@
 import io.github.djytc.etomcat.ETomcat;
 import io.github.djytc.etomcat.jaxb.config.*;
+import io.github.djytc.etomcat.jaxb.log4j2.*;
 import io.github.djytc.etomcat.jaxb.webapp.*;
+import io.github.djytc.etomcat.jaxb.webapp.FilterType;
 import io.github.djytc.etomcat.jaxb.webapp.ObjectFactory;
+import org.apache.catalina.servlets.DefaultServlet;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.httpclient.cookie.CookiePolicy;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.protocol.Protocol;
 import org.apache.commons.httpclient.protocol.ProtocolSocketFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.ConfigurationSource;
+import org.apache.logging.log4j.core.config.Configurator;
+import org.apache.logging.log4j.core.config.xml.XmlConfiguration;
 import org.jsslutils.extra.apachehttpclient.SslContextedSecureProtocolSocketFactory;
 import org.junit.Test;
 import test.TestServlet;
 
 import javax.net.ssl.*;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.Marshaller;
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.StringWriter;
 import java.lang.String;
 import java.net.URI;
 import java.security.*;
 
+import static io.github.djytc.etomcat.ETomcat.logger;
+import static javax.xml.bind.Marshaller.JAXB_FORMATTED_OUTPUT;
 import static org.junit.Assert.assertEquals;
 
 /**
@@ -25,6 +39,10 @@ import static org.junit.Assert.assertEquals;
  * Date: 4/25/17
  */
 public class ETomcatTest {
+
+    static {
+        initLog4j2();
+    }
 
     @Test
     public void test() throws Exception {
@@ -34,13 +52,15 @@ public class ETomcatTest {
         // test get
         setupClientSsl();
         HttpMethod get = new GetMethod("https://127.0.0.1:8443/etomcat_test");
-        get.getParams().setCookiePolicy(CookiePolicy.RFC_2965);
+//        get.getParams().setCookiePolicy(CookiePolicy.RFC_2965);
         client.executeMethod(get);
-        byte[] responseBody = get.getResponseBody();
-        java.lang.String content = new java.lang.String(responseBody, "UTF-8");
+        String content = new String(get.getResponseBody(), "UTF-8");
         assertEquals(TestServlet.class.getSimpleName(), content);
-        System.out.println(content);
-        System.out.println(tc.getInternalExecutorState());
+        // static get
+        HttpMethod getStatic = new GetMethod("https://127.0.0.1:8443/static/test.txt");
+        client.executeMethod(getStatic);
+        String contentStatic = new String(getStatic.getResponseBody(), "UTF-8");
+        assertEquals("hello static!", contentStatic);
     }
 
     private static WebAppType createWebApp() {
@@ -49,49 +69,70 @@ public class ETomcatTest {
                 .withVersion("3.1")
                 .withId("test")
                 .withModuleNameOrDescriptionAndDisplayName(
+                        // static content servlet
                         of.createWebAppTypeServlet(new ServletType()
-                                .withServletName(
-                                        new ServletNameType()
-                                                .withValue("testServlet"))
-                                .withServletClass(
-                                        new FullyQualifiedClassType()
-                                                .withValue("test.TestServlet"))),
+                                .withServletName(new ServletNameType()
+                                        .withValue("default"))
+                                .withServletClass(new FullyQualifiedClassType()
+                                        .withValue(DefaultServlet.class.getName()))
+                                .withInitParam(new ParamValueType()
+                                        .withParamName(new io.github.djytc.etomcat.jaxb.webapp.String()
+                                                .withValue("debug"))
+                                        .withParamValue(new XsdStringType()
+                                                .withValue("0")))
+                                .withInitParam(new ParamValueType()
+                                        .withParamName(new io.github.djytc.etomcat.jaxb.webapp.String()
+                                                .withValue("listings"))
+                                        .withParamValue(new XsdStringType()
+                                                .withValue("false")))
+                                .withLoadOnStartup("1")
+                        ),
                         of.createWebAppTypeServletMapping(new ServletMappingType()
-                                .withServletName(
-                                        new ServletNameType()
-                                                .withValue("testServlet"))
-                                .withUrlPattern(
-                                        new UrlPatternType()
-                                                .withValue("/etomcat_test"))),
+                                .withServletName(new ServletNameType()
+                                        .withValue("default"))
+                                .withUrlPattern(new UrlPatternType()
+                                        .withValue("/static/*"))),
+                        // app servlet
+                        of.createWebAppTypeServlet(new ServletType()
+                                .withServletName(new ServletNameType()
+                                        .withValue("testServlet"))
+                                .withServletClass(new FullyQualifiedClassType()
+                                        .withValue("test.TestServlet"))
+                                .withLoadOnStartup("1")),
+                        of.createWebAppTypeServletMapping(new ServletMappingType()
+                                .withServletName(new ServletNameType()
+                                        .withValue("testServlet"))
+                                .withUrlPattern(new UrlPatternType()
+                                        .withValue("/etomcat_test"))),
+                        // app listener
                         of.createWebAppTypeListener(new ListenerType()
-                                .withListenerClass(
-                                        new FullyQualifiedClassType()
+                                .withListenerClass(new FullyQualifiedClassType()
                                                 .withValue("test.TestListener"))),
+                        // app filter
                         of.createWebAppTypeFilter(new FilterType()
-                                .withFilterName(
-                                        new FilterNameType()
-                                                .withValue("testFilter"))
-                                .withFilterClass(
-                                        new FullyQualifiedClassType()
-                                                .withValue("test.TestFilter"))),
+                                .withFilterName(new FilterNameType()
+                                        .withValue("testFilter"))
+                                .withFilterClass(new FullyQualifiedClassType()
+                                        .withValue("test.TestFilter"))),
                         of.createWebAppTypeFilterMapping(new FilterMappingType()
-                                .withFilterName(
-                                        new FilterNameType()
-                                                .withValue("testFilter"))
-                                .withUrlPatternOrServletName(
-                                        new UrlPatternType()
-                                                .withValue("/etomcat_test")))
+                                .withFilterName(new FilterNameType()
+                                        .withValue("testFilter"))
+                                .withUrlPatternOrServletName(new UrlPatternType()
+                                        .withValue("/etomcat_test")))
                 );
     }
 
     private static TomcatConfigType createTomcatConfig() {
+        File resourcesDir = new File(codeSourceDir(ETomcatTest.class), "../../src/test/resources");
         return new TomcatConfigType(new ConnectorConfigType(), new ContextConfigType(), new ExecutorConfigType(),
                 new GeneralConfigType(), new NioConfigType(), new SocketConfigType(), new SslConfigType())
                 .withGeneralConfig(new GeneralConfigType()
-                        .withTcpPort(8443))
+                        .withTcpPort(8443)
+                        .withDocBaseDir(new File(resourcesDir, "webroot").getAbsolutePath())
+                        .withWebAppMount("/static"))
                 .withSslConfig(new SslConfigType()
                         .withSslEnabled(true)
-                        .withKeystoreFile(new File(codeSourceDir(ETomcatTest.class), "../../src/test/resources/etomcat.p12").getAbsolutePath())
+                        .withKeystoreFile(new File(resourcesDir, "etomcat.p12").getAbsolutePath())
                         .withKeystorePass("storepass")
                         .withKeyAlias("etomcat_test"));
     }
@@ -107,6 +148,67 @@ public class ETomcatTest {
         ctx.init(new KeyManager[]{}, tms, new SecureRandom());
         SslContextedSecureProtocolSocketFactory secureProtocolSocketFactory = new SslContextedSecureProtocolSocketFactory(ctx);
         Protocol.registerProtocol("https", new Protocol("https", (ProtocolSocketFactory) secureProtocolSocketFactory, 8443));
+    }
+
+    private static void initLog4j2() {
+        try {
+            ByteArrayInputStream baos = new ByteArrayInputStream(createLog4j2Config().getBytes("UTF-8"));
+            ConfigurationSource src = new ConfigurationSource(baos);
+            Configurator.initialize(Thread.currentThread().getContextClassLoader(), src);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static String createLog4j2Config() throws Exception {
+        io.github.djytc.etomcat.jaxb.log4j2.ObjectFactory of = new io.github.djytc.etomcat.jaxb.log4j2.ObjectFactory();
+        ConfigurationType conf = new ConfigurationType()
+                .withAppenders(new AppendersType()
+                        .withConsole(new ConsoleType()
+                                .withName("console")
+                                .withTarget("SYSTEM_OUT")
+                                .withPatternLayout(new PatternLayoutType()
+                                        .withPattern("%d{yyyy-MM-dd HH:mm:ss} [%-5p %-10.10t %-30.30c] %m%n"))))
+                .withLoggers(new LoggersType()
+                        .withContent(
+                                of.createLoggersTypeRoot(new RootType()
+                                        .withLevel("debug")
+                                        .withAppenderRef(new AppenderRefType()
+                                                .withRef("console"))),
+                                of.createLoggersTypeLogger(new LoggerType()
+                                        .withName("org.apache.tomcat")
+                                        .withLevel("warn")
+                                        .withAppenderRef(new AppenderRefType()
+                                                .withRef("console"))),
+                                of.createLoggersTypeLogger(new LoggerType()
+                                        .withName("org.apache.catalina")
+                                        .withLevel("warn")
+                                        .withAppenderRef(new AppenderRefType()
+                                                .withRef("console"))),
+                                of.createLoggersTypeLogger(new LoggerType()
+                                        .withName("org.apache.coyote")
+                                        .withLevel("warn")
+                                        .withAppenderRef(new AppenderRefType()
+                                                .withRef("console"))),
+                                of.createLoggersTypeLogger(new LoggerType()
+                                        .withName("httpclient")
+                                        .withLevel("info")
+                                        .withAppenderRef(new AppenderRefType()
+                                                .withRef("console"))),
+                                of.createLoggersTypeLogger(new LoggerType()
+                                        .withName("org.apache.commons.httpclient")
+                                        .withLevel("info")
+                                        .withAppenderRef(new AppenderRefType()
+                                                .withRef("console")))
+                        ));
+        JAXBContext jaxb = JAXBContext.newInstance(ConfigurationType.class.getPackage().getName());
+        Marshaller marshaller = jaxb.createMarshaller();
+        marshaller.setProperty(JAXB_FORMATTED_OUTPUT, true);
+        StringWriter writer = new StringWriter();
+        marshaller.marshal(of.createConfiguration(conf), writer);
+        String res = writer.toString();
+//        System.out.println(res);
+        return res;
     }
 
     private static File codeSourceDir(Class<?> clazz) {

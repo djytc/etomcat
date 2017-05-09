@@ -15,11 +15,11 @@ import java.util.Set;
  * User: alexkasko
  * Date: 9/14/14
  */
-public class EmbeddedResourceRoot implements WebResourceRoot {
+public class NoResourcesRoot implements WebResourceRoot {
 
     private final StandardContext context;
 
-    public EmbeddedResourceRoot(StandardContext context) {
+    public NoResourcesRoot(StandardContext context) {
         this.context = context;
     }
 
