@@ -24,6 +24,7 @@ import static java.io.File.separator;
  * Date: 12/3/14
  */
 public class EmbeddedTomcat {
+
     private final Log logger = LogFactory.getLog(EmbeddedTomcat.class);
 
     private boolean started = false;
