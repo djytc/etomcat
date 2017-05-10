@@ -1,14 +1,14 @@
-package io.github.djytc.etomcat.embedded;
+package io.github.djytc.etomcat.components;
 
 import io.github.djytc.etomcat.common.SameThreadExecutor;
 import org.apache.catalina.LifecycleException;
-import org.apache.catalina.core.StandardEngine;
+import org.apache.catalina.core.StandardHost;
 
 /**
- * @author alexkasko
- *         Date: 9/22/14
+ * User: alexkasko
+ * Date: 5/9/17
  */
-public class EmbeddedEngine extends StandardEngine {
+public class EmbeddedHost extends StandardHost {
     @Override
     protected void initInternal() throws LifecycleException {
         super.initInternal();

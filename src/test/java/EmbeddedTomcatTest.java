@@ -1,4 +1,5 @@
-import io.github.djytc.etomcat.ETomcat;
+import io.github.djytc.etomcat.EmbeddedTomcat;
+import io.github.djytc.etomcat.config.Log4j2ConfigMarshaller;
 import io.github.djytc.etomcat.jaxb.config.*;
 import io.github.djytc.etomcat.jaxb.log4j2.*;
 import io.github.djytc.etomcat.jaxb.webapp.*;
@@ -7,38 +8,29 @@ import io.github.djytc.etomcat.jaxb.webapp.ObjectFactory;
 import org.apache.catalina.servlets.DefaultServlet;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpMethod;
-import org.apache.commons.httpclient.cookie.CookiePolicy;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.protocol.Protocol;
 import org.apache.commons.httpclient.protocol.ProtocolSocketFactory;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.ConfigurationSource;
 import org.apache.logging.log4j.core.config.Configurator;
-import org.apache.logging.log4j.core.config.xml.XmlConfiguration;
 import org.jsslutils.extra.apachehttpclient.SslContextedSecureProtocolSocketFactory;
 import org.junit.Test;
 import test.TestServlet;
 
 import javax.net.ssl.*;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.Marshaller;
 import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.StringWriter;
 import java.lang.String;
 import java.net.URI;
 import java.security.*;
 
-import static io.github.djytc.etomcat.ETomcat.logger;
-import static javax.xml.bind.Marshaller.JAXB_FORMATTED_OUTPUT;
 import static org.junit.Assert.assertEquals;
 
 /**
  * User: alexkasko
  * Date: 4/25/17
  */
-public class ETomcatTest {
+public class EmbeddedTomcatTest {
 
     static {
         initLog4j2();
@@ -46,7 +38,7 @@ public class ETomcatTest {
 
     @Test
     public void test() throws Exception {
-        ETomcat tc = new ETomcat(createTomcatConfig(), createWebApp());
+        EmbeddedTomcat tc = new EmbeddedTomcat(createTomcatConfig(), createWebApp());
         tc.start();
         HttpClient client = new HttpClient();
         // test get
@@ -123,7 +115,7 @@ public class ETomcatTest {
     }
 
     private static TomcatConfigType createTomcatConfig() {
-        File resourcesDir = new File(codeSourceDir(ETomcatTest.class), "../../src/test/resources");
+        File resourcesDir = new File(codeSourceDir(EmbeddedTomcatTest.class), "../../src/test/resources");
         return new TomcatConfigType(new ConnectorConfigType(), new ContextConfigType(), new ExecutorConfigType(),
                 new GeneralConfigType(), new NioConfigType(), new SocketConfigType(), new SslConfigType())
                 .withGeneralConfig(new GeneralConfigType()
@@ -139,7 +131,7 @@ public class ETomcatTest {
 
     private static void setupClientSsl() throws Exception {
         KeyStore trustStore = KeyStore.getInstance("JKS", "SUN");
-        trustStore.load(ETomcatTest.class.getResourceAsStream("/client-truststore.jks"), "amber%".toCharArray());
+        trustStore.load(EmbeddedTomcatTest.class.getResourceAsStream("/client-truststore.jks"), "amber%".toCharArray());
         String alg = KeyManagerFactory.getDefaultAlgorithm();
         TrustManagerFactory fac = TrustManagerFactory.getInstance(alg);
         fac.init(trustStore);
@@ -152,7 +144,9 @@ public class ETomcatTest {
 
     private static void initLog4j2() {
         try {
-            ByteArrayInputStream baos = new ByteArrayInputStream(createLog4j2Config().getBytes("UTF-8"));
+            ConfigurationType conf = createLog4j2Config();
+            String xml = Log4j2ConfigMarshaller.log4j2ConfigToXml(conf);
+            ByteArrayInputStream baos = new ByteArrayInputStream(xml.getBytes("UTF-8"));
             ConfigurationSource src = new ConfigurationSource(baos);
             Configurator.initialize(Thread.currentThread().getContextClassLoader(), src);
         } catch (Exception e) {
@@ -160,9 +154,9 @@ public class ETomcatTest {
         }
     }
 
-    private static String createLog4j2Config() throws Exception {
+    private static ConfigurationType createLog4j2Config() throws Exception {
         io.github.djytc.etomcat.jaxb.log4j2.ObjectFactory of = new io.github.djytc.etomcat.jaxb.log4j2.ObjectFactory();
-        ConfigurationType conf = new ConfigurationType()
+        return new ConfigurationType()
                 .withAppenders(new AppendersType()
                         .withConsole(new ConsoleType()
                                 .withName("console")
@@ -201,14 +195,6 @@ public class ETomcatTest {
                                         .withAppenderRef(new AppenderRefType()
                                                 .withRef("console")))
                         ));
-        JAXBContext jaxb = JAXBContext.newInstance(ConfigurationType.class.getPackage().getName());
-        Marshaller marshaller = jaxb.createMarshaller();
-        marshaller.setProperty(JAXB_FORMATTED_OUTPUT, true);
-        StringWriter writer = new StringWriter();
-        marshaller.marshal(of.createConfiguration(conf), writer);
-        String res = writer.toString();
-//        System.out.println(res);
-        return res;
     }
 
     private static File codeSourceDir(Class<?> clazz) {

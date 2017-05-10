@@ -2,14 +2,13 @@ package io.github.djytc.etomcat;
 
 import io.github.djytc.etomcat.common.DeleteRecursiveVisitor;
 import io.github.djytc.etomcat.common.ExecutorState;
-import io.github.djytc.etomcat.common.WebAppMarshaller;
-import io.github.djytc.etomcat.embedded.*;
+import io.github.djytc.etomcat.components.*;
+import io.github.djytc.etomcat.config.WebAppConfigMarshaller;
 import io.github.djytc.etomcat.jaxb.config.*;
 import io.github.djytc.etomcat.jaxb.webapp.WebAppType;
 import org.apache.catalina.*;
 import org.apache.catalina.connector.Connector;
 import org.apache.catalina.core.*;
-import org.apache.catalina.webresources.StandardRoot;
 import org.apache.coyote.http11.Http11NioProtocol;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
@@ -24,8 +23,8 @@ import java.nio.file.*;
  * User: alexkasko
  * Date: 12/3/14
  */
-public class ETomcat {
-    public static final Log logger = LogFactory.getLog(ETomcat.class);
+public class EmbeddedTomcat {
+    public static final Log logger = LogFactory.getLog(EmbeddedTomcat.class);
 
     private final TomcatConfigType cf;
     private final String webapp;
@@ -36,20 +35,20 @@ public class ETomcat {
 
     private final Object startStopLock = new Object();
 
-    public ETomcat(TomcatConfigType cf, WebAppType webapp) {
+    public EmbeddedTomcat(TomcatConfigType cf, WebAppType webapp) {
         this.cf = cf;
-        this.webapp = WebAppMarshaller.marshal(webapp);
+        this.webapp = WebAppConfigMarshaller.webAppConfigToXml(webapp);
     }
 
-    public ETomcat start() throws ETomcatException {
+    public EmbeddedTomcat start() throws EmbeddedTomcatException {
         synchronized (startStopLock) {
-            if (started) throw new ETomcatException("ETomcat is already started");
+            if (started) throw new EmbeddedTomcatException("Embedded Tomcat is already started");
             try {
                 doStart();
                 return this;
             } catch (LifecycleException e) {
                 doStop();
-                throw new ETomcatException("Error starting ETomcat", e);
+                throw new EmbeddedTomcatException("Error starting Embedded Tomcat", e);
             }
         }
     }
@@ -63,7 +62,7 @@ public class ETomcat {
     }
 
     private void doStart() throws LifecycleException {
-        logger.info("Starting ETomcat...");
+        logger.info("Starting Embedded Tomcat...");
         // creating
         server = createServer();
         StandardService service = createService();
@@ -88,17 +87,17 @@ public class ETomcat {
             Runtime.getRuntime().addShutdownHook(new Thread(new ShutdownHook()));
         }
         started = true;
-        logger.info("ETomcat started successfully");
+        logger.info("Embedded Tomcat started successfully");
     }
 
     private void doStop() {
-        logger.info("Stopping ETomcat...");
+        logger.info("Stopping Embedded Tomcat...");
         try {
             server.stop();
         } catch (Exception e) {
-            logger.warn("Error stopping ETomcat", e);
+            logger.warn("Error stopping Embedded Tomcat", e);
         }
-        logger.info("ETomcat stopped");
+        logger.info("Embedded Tomcat stopped");
     }
 
     private StandardService createService() {
@@ -139,7 +138,7 @@ public class ETomcat {
                 wd = path.toString();
                 createdWorkDir = wd;
             } catch (IOException e) {
-                throw new ETomcatException("Cannot create temporary 'workDir'", e);
+                throw new EmbeddedTomcatException("Cannot create temporary 'workDir'", e);
             }
         } else {
             wd = cf.getGeneralConfig().getWorkDir();

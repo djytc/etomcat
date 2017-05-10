@@ -7,7 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 
-import static io.github.djytc.etomcat.ETomcat.logger;
+import static io.github.djytc.etomcat.EmbeddedTomcat.logger;
 
 /**
  * User: alexkasko

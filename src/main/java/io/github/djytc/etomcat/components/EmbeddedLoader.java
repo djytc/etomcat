@@ -1,9 +1,7 @@
-package io.github.djytc.etomcat.embedded;
+package io.github.djytc.etomcat.components;
 
-import org.apache.catalina.Container;
 import org.apache.catalina.Context;
 import org.apache.catalina.Loader;
-import org.apache.catalina.core.StandardContext;
 
 import java.beans.PropertyChangeListener;
 

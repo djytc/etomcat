@@ -1,7 +1,5 @@
-package io.github.djytc.etomcat.embedded;
+package io.github.djytc.etomcat.components;
 
-import io.github.djytc.etomcat.jaxb.webapp.ObjectFactory;
-import io.github.djytc.etomcat.jaxb.webapp.WebAppType;
 import org.apache.catalina.*;
 import org.apache.catalina.core.StandardContext;
 import org.apache.tomcat.util.descriptor.web.*;
@@ -9,16 +7,9 @@ import org.xml.sax.InputSource;
 
 import javax.servlet.MultipartConfigElement;
 import javax.servlet.SessionCookieConfig;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBElement;
-import javax.xml.bind.Marshaller;
-import javax.xml.namespace.QName;
 import java.io.*;
-import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.Set;
-
-import static javax.xml.bind.Marshaller.JAXB_FORMATTED_OUTPUT;
 
 /**
  * User: alexey

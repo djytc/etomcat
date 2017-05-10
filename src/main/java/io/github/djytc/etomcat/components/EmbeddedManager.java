@@ -1,22 +1,10 @@
-package io.github.djytc.etomcat.embedded;
+package io.github.djytc.etomcat.components;
 
 import org.apache.catalina.*;
-import org.apache.catalina.security.SecurityUtil;
 import org.apache.catalina.session.ManagerBase;
-import org.apache.catalina.session.StandardSession;
-import org.apache.catalina.util.CustomObjectInputStream;
-import org.apache.juli.logging.Log;
-import org.apache.juli.logging.LogFactory;
 import org.apache.tomcat.util.ExceptionUtils;
 
-import javax.servlet.ServletContext;
 import java.io.*;
-import java.security.AccessController;
-import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * User: alexey
